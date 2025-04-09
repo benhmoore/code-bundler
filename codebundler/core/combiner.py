@@ -3,7 +3,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 from codebundler.core.filters import should_ignore, should_include
 from codebundler.core.transformers import apply_transformations, get_comment_prefix
@@ -18,6 +18,7 @@ def combine_from_filelist(
     filelist: List[str],
     remove_comments: bool = False,
     remove_docstrings: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> int:
     """
     Combine files from a list into a single output file.
@@ -29,6 +30,7 @@ def combine_from_filelist(
         filelist: List of file paths to include
         remove_comments: Whether to remove comments
         remove_docstrings: Whether to remove docstrings
+        progress_callback: Optional callback function to report progress
 
     Returns:
         Number of files processed
@@ -53,6 +55,10 @@ def combine_from_filelist(
             if not os.path.isfile(abs_path):
                 logger.warning(f"File not found: {abs_path}")
                 continue
+
+            # Report progress if callback is provided
+            if progress_callback:
+                progress_callback(rel_path)
 
             try:
                 with open(abs_path, "r", encoding="utf-8") as infile:
@@ -92,6 +98,7 @@ def combine_source_files(
     include_names: Optional[List[str]] = None,
     remove_comments: bool = False,
     remove_docstrings: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> int:
     """
     Combine source files by walking the directory tree.
@@ -105,6 +112,7 @@ def combine_source_files(
         include_names: List of keywords to match in filenames
         remove_comments: Whether to remove comments
         remove_docstrings: Whether to remove docstrings
+        progress_callback: Optional callback function to report progress
 
     Returns:
         Number of files processed
@@ -123,6 +131,8 @@ def combine_source_files(
     with open(output_file, "w", encoding="utf-8") as outfile:
         outfile.write(f"{comment_prefix} Combined files from: {source_dir}\n\n")
 
+        # First, collect all matching files
+        matching_files = []
         for root, _, files in os.walk(source_dir):
             for filename in sorted(files):
                 if not filename.endswith(extension):
@@ -138,32 +148,40 @@ def combine_source_files(
                     logger.debug(f"Skipping file (not in include list): {rel_path}")
                     continue
 
-                abs_path = os.path.join(root, filename)
+                matching_files.append((root, filename, rel_path))
 
-                try:
-                    with open(abs_path, "r", encoding="utf-8") as infile:
-                        lines = infile.readlines()
-                except UnicodeDecodeError:
-                    logger.warning(f"Could not read file as UTF-8: {abs_path}")
-                    continue
-                except Exception as e:
-                    logger.warning(f"Error reading file {abs_path}: {e}")
-                    continue
+        # Now process each file
+        for root, filename, rel_path in matching_files:
+            # Report progress if callback is provided
+            if progress_callback:
+                progress_callback(rel_path)
 
-                lines = apply_transformations(
-                    lines,
-                    extension,
-                    remove_comments=remove_comments,
-                    remove_docstrings=remove_docstrings,
-                )
+            abs_path = os.path.join(root, filename)
 
-                header = f"{comment_prefix} ==== BEGIN FILE: {rel_path} ====\n"
-                footer = f"\n{comment_prefix} ==== END FILE: {rel_path} ====\n\n"
+            try:
+                with open(abs_path, "r", encoding="utf-8") as infile:
+                    lines = infile.readlines()
+            except UnicodeDecodeError:
+                logger.warning(f"Could not read file as UTF-8: {abs_path}")
+                continue
+            except Exception as e:
+                logger.warning(f"Error reading file {abs_path}: {e}")
+                continue
 
-                outfile.write(header)
-                outfile.writelines(lines)
-                outfile.write(footer)
-                processed_count += 1
-                logger.debug(f"Processed file: {rel_path}")
+            lines = apply_transformations(
+                lines,
+                extension,
+                remove_comments=remove_comments,
+                remove_docstrings=remove_docstrings,
+            )
+
+            header = f"{comment_prefix} ==== BEGIN FILE: {rel_path} ====\n"
+            footer = f"\n{comment_prefix} ==== END FILE: {rel_path} ====\n\n"
+
+            outfile.write(header)
+            outfile.writelines(lines)
+            outfile.write(footer)
+            processed_count += 1
+            logger.debug(f"Processed file: {rel_path}")
 
     return processed_count
