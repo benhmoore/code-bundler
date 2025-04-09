@@ -2,7 +2,7 @@
 
 import argparse
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple, Union
 
 from rich.console import Console
@@ -98,33 +98,47 @@ def prompt_yes_no(question: str, default: bool = False) -> bool:
     return Confirm.ask(f"[prompt]{question}[/prompt]", default=default, console=console)
 
 
+def normalize_extensions(extensions_input: str) -> List[str]:
+    """
+    Normalize a comma-separated string of extensions.
+
+    Args:
+        extensions_input: Comma-separated string of extensions
+
+    Returns:
+        List of normalized extensions (with leading dots)
+    """
+    if not extensions_input:
+        return []
+
+    extensions = [ext.strip() for ext in extensions_input.split(",")]
+    return [ext if ext.startswith(".") else f".{ext}" for ext in extensions if ext]
+
+
 @dataclass
 class UserOptions:
     """Class to hold user options for the CLI."""
 
     source_dir: Optional[str] = None
     output_file: Optional[str] = None
-    extension: Optional[str] = None
-    ignore_names: List[str] = None
-    ignore_paths: List[str] = None
-    include_names: List[str] = None
+    extensions: List[str] = field(default_factory=list)
+    ignore_names: List[str] = field(default_factory=list)
+    ignore_paths: List[str] = field(default_factory=list)
+    include_names: List[str] = field(default_factory=list)
     strip_comments: Optional[bool] = None
     remove_docstrings: Optional[bool] = None
     export_tree: Optional[str] = None
     use_tree: Optional[str] = None
-
-    def __post_init__(self):
-        """Initialize default values for lists."""
-        self.ignore_names = self.ignore_names or []
-        self.ignore_paths = self.ignore_paths or []
-        self.include_names = self.include_names or []
 
     def display_summary(self) -> None:
         """Display a summary of the options."""
         items = [
             ("Source Directory", self.source_dir or "Not specified"),
             ("Output File", self.output_file or "Not specified"),
-            ("Extension", self.extension or "Not specified"),
+            (
+                "Extensions",
+                ", ".join(self.extensions) if self.extensions else "Not specified",
+            ),
             (
                 "Ignore Names",
                 ", ".join(self.ignore_names) if self.ignore_names else "None",
@@ -181,11 +195,14 @@ class InteractiveSetup:
             args.output_file = prompt_user(
                 "Enter path for the combined output file", "combined_output.txt"
             )
-        if not args.ext:
-            ans = prompt_user(
-                "File extension to include (e.g. .py, .js, .cs, .php)", ".py"
+
+        # For extensions, we now support multiple values
+        if not args.extensions:
+            extensions_input = prompt_user(
+                "File extensions to include (comma-separated, e.g. .py,.cs,.shader)",
+                ".py",
             )
-            args.ext = ans if ans.startswith(".") else f".{ans}"
+            args.extensions = normalize_extensions(extensions_input)
 
         console.print()
         console.print("[bold cyan]Filtering Options[/bold cyan]")
@@ -253,7 +270,7 @@ class InteractiveSetup:
         options = UserOptions(
             source_dir=args.source_dir,
             output_file=args.output_file,
-            extension=args.ext,
+            extensions=args.extensions,
             ignore_names=args.ignore_names,
             ignore_paths=args.ignore_paths,
             include_names=args.include_names,

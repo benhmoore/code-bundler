@@ -4,12 +4,16 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable, List, Union
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from codebundler.core.filters import should_ignore, should_include
+from codebundler.core.filters import (
+    has_matching_extension,
+    should_ignore,
+    should_include,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +24,7 @@ class CodeBundlerHandler(FileSystemEventHandler):
     def __init__(
         self,
         source_dir: str,
-        extension: str,
+        extensions: Union[str, List[str]],
         ignore_names: List[str],
         ignore_paths: List[str],
         include_names: List[str],
@@ -30,7 +34,13 @@ class CodeBundlerHandler(FileSystemEventHandler):
     ):
         """Initialize the handler with filters and callback."""
         self.source_dir = source_dir
-        self.extension = extension
+
+        # Normalize extensions to a list
+        if isinstance(extensions, str):
+            self.extensions = [extensions]
+        else:
+            self.extensions = extensions
+
         self.ignore_names = ignore_names
         self.ignore_paths = ignore_paths
         self.include_names = include_names
@@ -47,7 +57,7 @@ class CodeBundlerHandler(FileSystemEventHandler):
             return
 
         # Skip non-matching files
-        if not event.src_path.endswith(self.extension):
+        if not has_matching_extension(event.src_path, self.extensions):
             return
 
         # Apply filtering logic
@@ -80,7 +90,7 @@ class CodeBundlerHandler(FileSystemEventHandler):
 
 def watch_directory(
     source_dir: str,
-    extension: str,
+    extensions: Union[str, List[str]],
     ignore_names: List[str],
     ignore_paths: List[str],
     include_names: List[str],
@@ -93,7 +103,7 @@ def watch_directory(
 
     Args:
         source_dir: Directory to watch
-        extension: File extension to monitor
+        extensions: File extension(s) to monitor
         ignore_names: List of filename patterns to ignore
         ignore_paths: List of path patterns to ignore
         include_names: List of filename patterns to include
@@ -106,7 +116,7 @@ def watch_directory(
     """
     event_handler = CodeBundlerHandler(
         source_dir=source_dir,
-        extension=extension,
+        extensions=extensions,
         ignore_names=ignore_names,
         ignore_paths=ignore_paths,
         include_names=include_names,

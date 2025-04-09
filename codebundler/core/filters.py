@@ -1,6 +1,32 @@
 """Filtering operations for file selection."""
 
-from typing import List
+import os
+from typing import List, Union
+
+
+def has_matching_extension(filename: str, extensions: Union[str, List[str]]) -> bool:
+    """
+    Check if a file has any of the specified extensions.
+
+    Args:
+        filename: Name of the file to check
+        extensions: One or more file extensions to match (must include the dot)
+
+    Returns:
+        True if the file has a matching extension, False otherwise
+    """
+    if not extensions:
+        return True  # If no extensions specified, include all files
+
+    # Convert to list if a single string is provided
+    if isinstance(extensions, str):
+        extensions = [extensions]
+
+    # Get the file extension (with the dot)
+    _, file_ext = os.path.splitext(filename)
+
+    # Check if any of the extensions match
+    return any(file_ext.lower() == ext.lower() for ext in extensions)
 
 
 def should_include(filename: str, include_names: List[str]) -> bool:

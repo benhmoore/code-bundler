@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 import time
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from rich.table import Table
 
@@ -143,8 +143,18 @@ def setup_parser() -> argparse.ArgumentParser:
         "output_file", nargs="?", default=None, help="Output file path."
     )
 
+    # Support both single ext and multiple exts for backward compatibility
     basic_group.add_argument(
-        "--ext", metavar="EXT", help="File extension (e.g., .py, .cs, .js, .php)."
+        "--ext",
+        metavar="EXT",
+        help="File extension (e.g., .py, .cs, .js, .php). DEPRECATED: Use --exts instead.",
+    )
+
+    basic_group.add_argument(
+        "--exts",
+        nargs="+",
+        metavar="EXT",
+        help="File extensions to include (e.g., .py .cs .shader).",
     )
 
     # Filtering options
@@ -249,6 +259,32 @@ def setup_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def normalize_extensions(extensions: Union[str, List[str], None]) -> List[str]:
+    """
+    Normalize file extensions to a consistent format.
+
+    Args:
+        extensions: Single extension string, list of extensions, or None
+
+    Returns:
+        List of normalized extensions (always starting with a dot)
+    """
+    if not extensions:
+        return []
+
+    if isinstance(extensions, str):
+        # Handle single extension
+        ext = extensions.strip()
+        return [ext if ext.startswith(".") else f".{ext}"]
+    else:
+        # Handle list of extensions
+        return [
+            ext.strip() if ext.strip().startswith(".") else f".{ext.strip()}"
+            for ext in extensions
+            if ext.strip()
+        ]
+
+
 def display_welcome_banner() -> None:
     """Display a welcome banner when the application starts."""
     # Create a table for the header
@@ -297,6 +333,7 @@ def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
                 "Watch Mode",
                 f"[bold]Source Directory:[/bold] {parsed_args.source_dir}\n"
                 f"[bold]Output File:[/bold] {parsed_args.output_file}\n"
+                f"[bold]Extensions:[/bold] {', '.join(parsed_args.extensions)}\n"
                 f"[bold]Press Ctrl+C to stop watching[/bold]",
                 "cyan",
             )
@@ -312,7 +349,7 @@ def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
                     combine_from_filelist(
                         source_dir=parsed_args.source_dir,
                         output_file=parsed_args.output_file,
-                        extension=parsed_args.ext,
+                        extensions=parsed_args.extensions,
                         filelist=filelist,
                         remove_comments=bool(parsed_args.strip_comments),
                         remove_docstrings=bool(parsed_args.remove_docstrings),
@@ -321,7 +358,7 @@ def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
                     combine_source_files(
                         source_dir=parsed_args.source_dir,
                         output_file=parsed_args.output_file,
-                        extension=parsed_args.ext,
+                        extensions=parsed_args.extensions,
                         ignore_names=parsed_args.ignore_names,
                         ignore_paths=parsed_args.ignore_paths,
                         include_names=parsed_args.include_names,
@@ -335,7 +372,7 @@ def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
         # Set up the observer
         observer = watch_directory(
             source_dir=parsed_args.source_dir,
-            extension=parsed_args.ext,
+            extensions=parsed_args.extensions,
             ignore_names=parsed_args.ignore_names,
             ignore_paths=parsed_args.ignore_paths,
             include_names=parsed_args.include_names,
@@ -378,6 +415,18 @@ def main(args: Optional[List[str]] = None) -> int:
         # Setup logging first
         configure_logging(parsed_args.verbose)
 
+        # Normalize extension parameters
+        # First check if --exts is provided
+        if parsed_args.exts:
+            extensions = normalize_extensions(parsed_args.exts)
+        # Fall back to --ext if --exts is not provided
+        elif parsed_args.ext:
+            extensions = normalize_extensions(parsed_args.ext)
+        else:
+            extensions = []
+
+        parsed_args.extensions = extensions
+
         # Display welcome banner (if not in quiet mode)
         if parsed_args.verbose >= 0:
             display_welcome_banner()
@@ -402,7 +451,7 @@ def main(args: Optional[List[str]] = None) -> int:
                 (
                     tree_source_dir,
                     tree_output_file,
-                    tree_extension,
+                    tree_extensions,
                     tree_strip_comments,
                     tree_remove_docstrings,
                     filelist,
@@ -418,9 +467,9 @@ def main(args: Optional[List[str]] = None) -> int:
                 logger.debug(f"Using output file from tree: {tree_output_file}")
 
             # Also fill comment/docstring flags if still None
-            if not parsed_args.ext and tree_extension:
-                parsed_args.ext = tree_extension
-                logger.debug(f"Using extension from tree: {tree_extension}")
+            if not parsed_args.extensions and tree_extensions:
+                parsed_args.extensions = tree_extensions
+                logger.debug(f"Using extensions from tree: {tree_extensions}")
 
             if parsed_args.strip_comments is None and tree_strip_comments is not None:
                 parsed_args.strip_comments = tree_strip_comments
@@ -444,7 +493,14 @@ def main(args: Optional[List[str]] = None) -> int:
                     [
                         ("Source Directory", tree_source_dir or "Not specified"),
                         ("Output File", tree_output_file or "Not specified"),
-                        ("Extension", tree_extension or "Not specified"),
+                        (
+                            "Extensions",
+                            (
+                                ", ".join(tree_extensions)
+                                if tree_extensions
+                                else "Not specified"
+                            ),
+                        ),
                         ("Strip Comments", "Yes" if tree_strip_comments else "No"),
                         (
                             "Remove Docstrings",
@@ -464,7 +520,7 @@ def main(args: Optional[List[str]] = None) -> int:
         needs_essential_args = (
             not parsed_args.source_dir
             or not parsed_args.output_file
-            or not parsed_args.ext
+            or not parsed_args.extensions
         )
         if parsed_args.interactive or (needs_essential_args and sys.stdin.isatty()):
             print_info("Running in interactive mode")
@@ -479,7 +535,7 @@ def main(args: Optional[List[str]] = None) -> int:
                     "Export Tree Mode",
                     f"[bold]Source:[/bold] {parsed_args.source_dir}\n"
                     f"[bold]Tree File:[/bold] {parsed_args.export_tree}\n"
-                    f"[bold]Extension:[/bold] {parsed_args.ext}",
+                    f"[bold]Extensions:[/bold] {', '.join(parsed_args.extensions)}",
                     "green",
                 )
             )
@@ -491,7 +547,7 @@ def main(args: Optional[List[str]] = None) -> int:
                     file_count = generate_tree_file(
                         source_dir=parsed_args.source_dir,
                         tree_output_path=parsed_args.export_tree,
-                        extension=parsed_args.ext,
+                        extensions=parsed_args.extensions,
                         ignore_names=parsed_args.ignore_names,
                         ignore_paths=parsed_args.ignore_paths,
                         include_names=parsed_args.include_names,
@@ -533,8 +589,8 @@ def main(args: Optional[List[str]] = None) -> int:
             if not parsed_args.output_file:
                 print_error("No output file provided (and none found in the tree).")
                 return 1
-            if not parsed_args.ext:
-                print_error("No extension provided (and none found in the tree).")
+            if not parsed_args.extensions:
+                print_error("No extensions provided (and none found in the tree).")
                 return 1
             if not filelist:
                 print_warning("No valid file paths found in the tree file.")
@@ -546,6 +602,7 @@ def main(args: Optional[List[str]] = None) -> int:
                     f"[bold]Source:[/bold] {parsed_args.source_dir}\n"
                     f"[bold]Output:[/bold] {parsed_args.output_file}\n"
                     f"[bold]Tree File:[/bold] {parsed_args.use_tree}\n"
+                    f"[bold]Extensions:[/bold] {', '.join(parsed_args.extensions)}\n"
                     f"[bold]Files to Process:[/bold] {len(filelist)}",
                     "green",
                 )
@@ -557,7 +614,7 @@ def main(args: Optional[List[str]] = None) -> int:
                     processed_count = combine_from_filelist(
                         source_dir=parsed_args.source_dir,
                         output_file=parsed_args.output_file,
-                        extension=parsed_args.ext,
+                        extensions=parsed_args.extensions,
                         filelist=filelist,
                         remove_comments=bool(parsed_args.strip_comments),
                         remove_docstrings=bool(parsed_args.remove_docstrings),
@@ -608,8 +665,8 @@ def main(args: Optional[List[str]] = None) -> int:
         if not parsed_args.output_file:
             print_error("No output_file provided.")
             return 1
-        if not parsed_args.ext:
-            print_error("No extension provided.")
+        if not parsed_args.extensions:
+            print_error("No extensions provided.")
             return 1
 
         console.print(
@@ -617,7 +674,7 @@ def main(args: Optional[List[str]] = None) -> int:
                 "Direct Combine Mode",
                 f"[bold]Source:[/bold] {parsed_args.source_dir}\n"
                 f"[bold]Output:[/bold] {parsed_args.output_file}\n"
-                f"[bold]Extension:[/bold] {parsed_args.ext}\n"
+                f"[bold]Extensions:[/bold] {', '.join(parsed_args.extensions)}\n"
                 f"[bold]Strip Comments:[/bold] {'Yes' if parsed_args.strip_comments else 'No'}\n"
                 f"[bold]Remove Docstrings:[/bold] {'Yes' if parsed_args.remove_docstrings else 'No'}",
                 "green",
@@ -632,7 +689,7 @@ def main(args: Optional[List[str]] = None) -> int:
                 processed_count = combine_source_files(
                     source_dir=parsed_args.source_dir,
                     output_file=parsed_args.output_file,
-                    extension=parsed_args.ext,
+                    extensions=parsed_args.extensions,
                     ignore_names=parsed_args.ignore_names,
                     ignore_paths=parsed_args.ignore_paths,
                     include_names=parsed_args.include_names,
