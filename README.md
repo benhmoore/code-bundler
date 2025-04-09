@@ -1,18 +1,15 @@
 # Code Bundler
 
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/codebundler)
-![PyPI](https://img.shields.io/pypi/v/codebundler)
-![PyPI - License](https://img.shields.io/pypi/l/codebundler)
-
-Combine and transform source code files for LLM (Large Language Model) usage.
+A specialized tool for combining source code files into a single bundled file, designed specifically for use with Large Language Models (LLMs).
 
 ## Features
 
-- **Export Mode**: Generate a tree of matching source files for review and selection
-- **Select Mode**: Use a tree file to select specific files for inclusion
-- **Direct Mode**: Combine source files in one pass
-- **Filtering**: Filter files by name patterns or path segments
-- **Transformations**: Optionally remove comments or docstrings
+- Combines multiple source code files into a single file
+- Intelligent filtering of files based on patterns
+- Tree-based file inclusion for precise control
+- Optional removal of comments and docstrings
+- Watch mode for automatic rebuilding on file changes
+- Cross-platform support
 
 ## Installation
 
@@ -20,90 +17,111 @@ Combine and transform source code files for LLM (Large Language Model) usage.
 pip install codebundler
 ```
 
+For watch mode functionality:
+
+```bash
+pip install codebundler[watch]
+```
+
+Or install the watch dependency manually:
+
+```bash
+pip install watchdog
+```
+
 ## Usage
 
 ### Basic Usage
 
-Combine all Python files in a directory:
+```bash
+codebundler --source-dir ./my_project --output-file bundled_code.py
+```
+
+### Filtering Files
 
 ```bash
-codebundler /path/to/source output.py --ext .py
+codebundler --source-dir ./my_project --output-file bundled_code.py --ignore-names "test_*.py,*_test.py" --ignore-paths "**/tests/**"
 ```
 
-### Interactive Mode
+### Using a Tree File
 
-Run in interactive mode for a guided experience:
+Create a text file with a list of files to include, one per line:
+
+```
+src/main.py
+src/utils/helpers.py
+src/models/user.py
+```
+
+Then use it with the `--use-tree` flag:
 
 ```bash
-codebundler -i
+codebundler --source-dir ./my_project --output-file bundled_code.py --use-tree file_list.txt
 ```
 
-### Export a Tree File
-
-Export a tree file to manually select which files to include:
+### Removing Comments and Docstrings
 
 ```bash
-codebundler /path/to/source --export-tree my_tree.txt --ext .py
+codebundler --source-dir ./my_project --output-file bundled_code.py --strip-comments --remove-docstrings
 ```
 
-Then edit the tree file, removing lines for files you don't want to include.
+### Watch Mode
 
-### Combine Using a Tree File
-
-Use an edited tree file to combine selected files:
+Watch for file changes and automatically rebuild the bundle:
 
 ```bash
-codebundler --use-tree my_tree.txt
+codebundler --source-dir ./my_project --output-file bundled_code.py --watch
 ```
 
-### Additional Options
-
-- `--ignore-names`: Ignore files containing these keywords
-- `--ignore-paths`: Ignore paths containing these keywords
-- `--include-names`: Only include files containing these keywords
-- `--strip-comments`: Remove single-line comments
-- `--remove-docstrings`: Remove docstrings (Python only)
-
-## Examples
-
-### Preparing code for an LLM session
+This works with all other options, including tree files:
 
 ```bash
-# Export tree for review
-codebundler ./my_project --export-tree project_tree.txt --ext .py --strip-comments
-
-# Edit project_tree.txt to remove test files or other unwanted files
-
-# Combine files using edited tree
-codebundler --use-tree project_tree.txt
+codebundler --source-dir ./my_project --output-file bundled_code.py --use-tree file_list.txt --watch
 ```
 
-### Direct combination with filters
+Or with command-line filters:
 
 ```bash
-codebundler ./my_project combined.py --ext .py \
-  --ignore-names test_ __pycache__ \
-  --ignore-paths /tests/ /data/ \
-  --strip-comments
+codebundler --source-dir ./my_project --output-file bundled_code.py --ignore-paths "**/tests/**" --watch
 ```
 
-## API Usage
+Press Ctrl+C to stop the watch process.
 
-You can also use Code Bundler programmatically:
+## Command Line Options
 
-```python
-from codebundler import combine_source_files
+| Option              | Description                                      |
+| ------------------- | ------------------------------------------------ |
+| --source-dir        | Source directory containing the code             |
+| --output-file       | Output file path                                 |
+| --ext               | File extension to include (default: .py)         |
+| --ignore-names      | Comma-separated file patterns to ignore          |
+| --ignore-paths      | Comma-separated path patterns to ignore          |
+| --include-names     | Comma-separated file patterns to include         |
+| --use-tree          | Use a tree file listing files to include         |
+| --strip-comments    | Remove single and multi-line comments            |
+| --remove-docstrings | Remove Python docstrings                         |
+| --watch             | Watch for file changes and rebuild automatically |
 
-combine_source_files(
-    source_dir="./my_project",
-    output_file="combined.py",
-    extension=".py",
-    ignore_names=["test_", "__pycache__"],
-    ignore_paths=["/tests/", "/data/"],
-    remove_comments=True
-)
+## Example Use Cases
+
+### Preparing Code for LLM Analysis
+
+Bundle your codebase to send to ChatGPT or Claude for analysis:
+
+```bash
+codebundler --source-dir ./my_project --output-file for_llm.py --ignore-paths "**/tests/**,**/venv/**" --watch
 ```
 
-## License
+### Creating a Single-File Version
 
-MIT
+Create a distributable single-file version of your multi-file application:
+
+```bash
+codebundler --source-dir ./my_app --output-file my_app_single_file.py --use-tree production_files.txt
+```
+
+## Notes
+
+- Watch mode uses debouncing to prevent excessive rebuilds when multiple files change simultaneously
+- For large projects, consider using more specific filters or a tree file to improve performance
+- The watchdog package is only required if you use the `--watch` feature
