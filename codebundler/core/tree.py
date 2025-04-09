@@ -1,7 +1,7 @@
 """Tree file generation and parsing operations."""
 
-import os
 import logging
+import os
 from typing import List, Optional, Tuple
 
 from codebundler.core.filters import should_ignore, should_include

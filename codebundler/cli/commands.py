@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 import time
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from rich.table import Table
 
@@ -251,9 +251,6 @@ def setup_parser() -> argparse.ArgumentParser:
 
 def display_welcome_banner() -> None:
     """Display a welcome banner when the application starts."""
-    title = "[bold cyan]Code Bundler[/bold cyan]"
-    version_str = f"[dim]v{__version__}[/dim]"
-
     # Create a table for the header
     table = Table(show_header=False, box=None, padding=(0, 1))
     table.add_column(justify="left", width=os.get_terminal_size().columns - 4)
@@ -269,6 +266,98 @@ def display_welcome_banner() -> None:
     console.print()
     console.print(table)
     console.print()
+
+
+def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
+    """
+    Set up file watching for automatic rebuilding.
+
+    Args:
+        parsed_args: Command line arguments
+        filelist: List of files to watch (if using tree mode)
+        use_tree: Whether we're using a tree file
+
+    Returns:
+        Exit code
+    """
+    try:
+        # Import here to avoid dependency for users who don't need watch
+        try:
+            from codebundler.utils.watcher import watch_directory
+        except ImportError:
+            print_error(
+                "Watching requires the 'watchdog' package. "
+                "Install with: pip install codebundler[watch] or pip install watchdog"
+            )
+            return 1
+
+        print_info("Watching for file changes. Press Ctrl+C to stop.")
+        console.print(
+            create_panel(
+                "Watch Mode",
+                f"[bold]Source Directory:[/bold] {parsed_args.source_dir}\n"
+                f"[bold]Output File:[/bold] {parsed_args.output_file}\n"
+                f"[bold]Press Ctrl+C to stop watching[/bold]",
+                "cyan",
+            )
+        )
+
+        # Define a callback function for rebuilding
+        def rebuild(changed_file):
+            console.print(
+                f"[cyan]Rebuilding after change to: [bold]{changed_file}[/bold][/cyan]"
+            )
+            try:
+                if use_tree:
+                    combine_from_filelist(
+                        source_dir=parsed_args.source_dir,
+                        output_file=parsed_args.output_file,
+                        extension=parsed_args.ext,
+                        filelist=filelist,
+                        remove_comments=bool(parsed_args.strip_comments),
+                        remove_docstrings=bool(parsed_args.remove_docstrings),
+                    )
+                else:
+                    combine_source_files(
+                        source_dir=parsed_args.source_dir,
+                        output_file=parsed_args.output_file,
+                        extension=parsed_args.ext,
+                        ignore_names=parsed_args.ignore_names,
+                        ignore_paths=parsed_args.ignore_paths,
+                        include_names=parsed_args.include_names,
+                        remove_comments=bool(parsed_args.strip_comments),
+                        remove_docstrings=bool(parsed_args.remove_docstrings),
+                    )
+                console.print("[green]Rebuild complete[/green]")
+            except Exception as e:
+                print_error(f"Error during rebuild: {e}")
+
+        # Set up the observer
+        observer = watch_directory(
+            source_dir=parsed_args.source_dir,
+            extension=parsed_args.ext,
+            ignore_names=parsed_args.ignore_names,
+            ignore_paths=parsed_args.ignore_paths,
+            include_names=parsed_args.include_names,
+            filelist=filelist,
+            use_tree=use_tree,
+            callback=rebuild,
+        )
+
+        try:
+            # Keep the main thread running
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            console.print("\n[cyan]Stopping watch mode...[/cyan]")
+            observer.stop()
+        observer.join()
+
+        return 0
+
+    except Exception as e:
+        print_error(f"Error setting up watch mode: {e}")
+        return 1
 
 
 def main(args: Optional[List[str]] = None) -> int:
@@ -591,129 +680,4 @@ def main(args: Optional[List[str]] = None) -> int:
     except Exception as e:
         print_error(f"Unexpected error: {e}")
         logger.debug("Detailed error:", exc_info=True)
-        return 1
-
-
-def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
-    """
-    Set up file watching for automatic rebuilding.
-
-    Args:
-        parsed_args: Command line arguments
-        filelist: List of files to watch (if using tree mode)
-        use_tree: Whether we're using a tree file
-
-    Returns:
-        Exit code
-    """
-    try:
-        # Import here to avoid dependency for users who don't need watch
-        try:
-            from watchdog.observers import Observer
-            from watchdog.events import FileSystemEventHandler, FileSystemEvent
-        except ImportError:
-            print_error(
-                "Watching requires the 'watchdog' package. "
-                "Install with: pip install codebundler[watch] or pip install watchdog"
-            )
-            return 1
-
-        print_info("Watching for file changes. Press Ctrl+C to stop.")
-        console.print(
-            create_panel(
-                "Watch Mode",
-                f"[bold]Source Directory:[/bold] {parsed_args.source_dir}\n"
-                f"[bold]Output File:[/bold] {parsed_args.output_file}\n"
-                f"[bold]Press Ctrl+C to stop watching[/bold]",
-                "cyan",
-            )
-        )
-
-        class CodeBundlerHandler(FileSystemEventHandler):
-            """Event handler for file system changes."""
-
-            def __init__(
-                self,
-                extension: str,
-                ignore_names: List[str],
-                ignore_paths: List[str],
-                include_names: List[str],
-                callback,
-            ):
-                """Initialize the handler with filters and callback."""
-                self.extension = extension
-                self.ignore_names = ignore_names
-                self.ignore_paths = ignore_paths
-                self.include_names = include_names
-                self.callback = callback
-                self.last_run = 0
-                self.debounce_time = 0.5  # seconds
-                self.last_changed_file = None
-
-                # Debounce to prevent multiple rapid rebuilds
-                current_time = time.time()
-                if current_time - self.last_run < self.debounce_time:
-                    return
-
-                self.last_run = current_time
-                logger.info(f"File changed: {self.last_changed_file}")
-                self.callback(self.last_changed_file)
-
-        # Define a callback function for rebuilding
-        def rebuild(changed_file):
-            console.print(
-                f"[cyan]Rebuilding after change to: [bold]{changed_file}[/bold][/cyan]"
-            )
-            try:
-                if use_tree:
-                    combine_from_filelist(
-                        source_dir=parsed_args.source_dir,
-                        output_file=parsed_args.output_file,
-                        extension=parsed_args.ext,
-                        filelist=filelist,
-                        remove_comments=bool(parsed_args.strip_comments),
-                        remove_docstrings=bool(parsed_args.remove_docstrings),
-                    )
-                else:
-                    combine_source_files(
-                        source_dir=parsed_args.source_dir,
-                        output_file=parsed_args.output_file,
-                        extension=parsed_args.ext,
-                        ignore_names=parsed_args.ignore_names,
-                        ignore_paths=parsed_args.ignore_paths,
-                        include_names=parsed_args.include_names,
-                        remove_comments=bool(parsed_args.strip_comments),
-                        remove_docstrings=bool(parsed_args.remove_docstrings),
-                    )
-                console.print("[green]Rebuild complete[/green]")
-            except Exception as e:
-                print_error(f"Error during rebuild: {e}")
-
-        # Set up the event handler
-        event_handler = CodeBundlerHandler(
-            extension=parsed_args.ext,
-            ignore_names=parsed_args.ignore_names,
-            ignore_paths=parsed_args.ignore_paths,
-            include_names=parsed_args.include_names,
-            callback=rebuild,
-        )
-
-        # Set up the observer
-        observer = Observer()
-        observer.schedule(event_handler, parsed_args.source_dir, recursive=True)
-        observer.start()
-
-        try:
-            # Keep the main thread running
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            console.print("\n[cyan]Stopping watch mode...[/cyan]")
-            observer.stop()
-        observer.join()
-
-        return 0
-
-    except Exception as e:
-        print_error(f"Error setting up watch mode: {e}")
         return 1

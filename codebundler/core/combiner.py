@@ -1,9 +1,9 @@
 """File combining operations."""
 
-import os
 import logging
+import os
 from pathlib import Path
-from typing import List, Optional, Callable
+from typing import Callable, List, Optional
 
 from codebundler.core.filters import should_ignore, should_include
 from codebundler.core.transformers import apply_transformations, get_comment_prefix
