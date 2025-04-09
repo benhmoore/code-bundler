@@ -4,29 +4,17 @@ A specialized tool for combining source code files into a single bundled file, d
 
 ## Features
 
-- Combines multiple source code files into a single file
-- Intelligent filtering of files based on patterns
-- Tree-based file inclusion for precise control
-- Optional removal of comments and docstrings
-- Watch mode for automatic rebuilding on file changes
-- Cross-platform support
+-   Combines multiple source code files into a single file
+-   Intelligent filtering of files based on patterns
+-   Tree-based file inclusion for precise control
+-   Optional removal of comments and docstrings
+-   Watch mode for automatic rebuilding on file changes
+-   Cross-platform support
 
 ## Installation
 
 ```bash
 pip install codebundler
-```
-
-For watch mode functionality:
-
-```bash
-pip install codebundler[watch]
-```
-
-Or install the watch dependency manually:
-
-```bash
-pip install watchdog
 ```
 
 ## Usage
@@ -122,6 +110,5 @@ codebundler --source-dir ./my_app --output-file my_app_single_file.py --use-tree
 
 ## Notes
 
-- Watch mode uses debouncing to prevent excessive rebuilds when multiple files change simultaneously
-- For large projects, consider using more specific filters or a tree file to improve performance
-- The watchdog package is only required if you use the `--watch` feature
+-   Watch mode uses debouncing to prevent excessive rebuilds when multiple files change simultaneously
+-   For large projects, consider using more specific filters or a tree file to improve performance
