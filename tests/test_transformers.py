@@ -17,7 +17,7 @@ class TestTransformers(unittest.TestCase):
         self.assertEqual(get_comment_prefix(".py"), "#")
         self.assertEqual(get_comment_prefix(".js"), "//")
         self.assertEqual(get_comment_prefix(".unknown"), "#")  # Default
-        
+
     def test_strip_single_line_comments_python(self):
         """Test stripping Python single-line comments."""
         lines = [
@@ -51,7 +51,7 @@ class TestTransformers(unittest.TestCase):
         ]
         result = strip_single_line_comments(lines, ".js")
         self.assertEqual(result, expected)
-        
+
     def test_strip_single_line_comments_unknown_extension(self):
         """Test that unknown extensions don't have comments stripped."""
         lines = [
@@ -78,7 +78,7 @@ class TestTransformers(unittest.TestCase):
         ]
         result = remove_python_docstrings(lines)
         self.assertEqual(result, expected)
-        
+
     def test_remove_python_docstrings_triple_single_quotes(self):
         """Test removing Python docstrings with triple single quotes."""
         lines = [
@@ -94,7 +94,7 @@ class TestTransformers(unittest.TestCase):
         ]
         result = remove_python_docstrings(lines)
         self.assertEqual(result, expected)
-        
+
     def test_remove_python_docstrings_single_line(self):
         """Test removing single-line Python docstrings."""
         lines = [

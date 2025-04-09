@@ -17,19 +17,22 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
 ]
 keywords = ["code", "source code", "llm", "combine", "transform"]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 dependencies = [
     "rich>=10.0.0",
-    "watchdog>=2.1.0"
 ]
+
+[project.optional-dependencies]
+watch = ["watchdog>=2.1.0"]
+dev = ["pytest", "pytest-cov", "black", "flake8", "isort", "watchdog>=2.1.0"]
 
 [project.urls]
 Homepage = "https://github.com/mooresm/codebundler"
@@ -43,7 +46,7 @@ packages = ["codebundler", "codebundler.core", "codebundler.cli", "codebundler.u
 
 [tool.black]
 line-length = 88
-target-version = ["py37", "py38", "py39", "py310"]
+target-version = ["py38", "py39", "py310", "py311"]
 
 [tool.isort]
 profile = "black"

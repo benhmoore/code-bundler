@@ -648,33 +648,7 @@ def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
                 self.callback = callback
                 self.last_run = 0
                 self.debounce_time = 0.5  # seconds
-
-            def on_any_event(self, event: FileSystemEvent) -> None:
-                """Handle file system events."""
-                if event.is_directory:
-                    return
-
-                # Skip non-matching files
-                if not event.src_path.endswith(self.extension):
-                    return
-
-                # Apply filtering logic
-                from codebundler.core.filters import should_ignore, should_include
-
-                filename = os.path.basename(event.src_path)
-                rel_path = os.path.relpath(event.src_path, parsed_args.source_dir)
-                rel_path = rel_path.replace("\\", "/")
-
-                if should_ignore(
-                    filename, rel_path, self.ignore_names, self.ignore_paths
-                ):
-                    return
-                if not should_include(filename, self.include_names):
-                    return
-
-                # For tree mode, check if the file is in our list
-                if use_tree and filelist and rel_path not in filelist:
-                    return
+                self.last_changed_file = None
 
                 # Debounce to prevent multiple rapid rebuilds
                 current_time = time.time()
@@ -682,12 +656,14 @@ def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
                     return
 
                 self.last_run = current_time
-                logger.info(f"File changed: {rel_path}")
-                self.callback(rel_path)
+                logger.info(f"File changed: {self.last_changed_file}")
+                self.callback(self.last_changed_file)
 
         # Define a callback function for rebuilding
-        def rebuild(changed_file=None):
-            console.print(f"[cyan]Rebuilding... (triggered by {changed_file})[/cyan]")
+        def rebuild(changed_file):
+            console.print(
+                f"[cyan]Rebuilding after change to: [bold]{changed_file}[/bold][/cyan]"
+            )
             try:
                 if use_tree:
                     combine_from_filelist(
@@ -709,9 +685,7 @@ def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
                         remove_comments=bool(parsed_args.strip_comments),
                         remove_docstrings=bool(parsed_args.remove_docstrings),
                     )
-                console.print(
-                    f"[green]Rebuild complete: {parsed_args.output_file}[/green]"
-                )
+                console.print("[green]Rebuild complete[/green]")
             except Exception as e:
                 print_error(f"Error during rebuild: {e}")
 
