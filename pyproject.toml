@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codebundler"
-version = "0.1.2"
+version = "0.2.0"
 description = "TUI application to combine and transform source code files for LLM usage"
 readme = "README.md"
 authors = [
