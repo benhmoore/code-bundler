@@ -62,8 +62,7 @@ class DirectoryTree(Tree):
         self._last_key_press = None
         self._highlighted_node = None
         
-        # Set ID for query_one
-        self.id = kwargs.get("id", "file-tree")
+        # ID is already set by super().__init__ through kwargs
 
     def on_mount(self) -> None:
         """Initialize the tree after the widget is mounted."""
