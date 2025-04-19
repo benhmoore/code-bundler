@@ -21,9 +21,9 @@ class CodeBundlerHandler(FileSystemEventHandler):
         self,
         source_dir: str,
         extension: str,
-        ignore_names: List[str],
-        ignore_paths: List[str],
-        include_names: List[str],
+        ignore_names: List[str] = None,
+        ignore_paths: List[str] = None,
+        include_names: List[str] = None,
         filelist: List[str] = None,
         use_tree: bool = False,
         callback: Callable[[str], None] = None,
@@ -31,9 +31,9 @@ class CodeBundlerHandler(FileSystemEventHandler):
         """Initialize the handler with filters and callback."""
         self.source_dir = source_dir
         self.extension = extension
-        self.ignore_names = ignore_names
-        self.ignore_paths = ignore_paths
-        self.include_names = include_names
+        self.ignore_names = ignore_names or []
+        self.ignore_paths = ignore_paths or []
+        self.include_names = include_names or []
         self.filelist = filelist
         self.use_tree = use_tree
         self.callback = callback
