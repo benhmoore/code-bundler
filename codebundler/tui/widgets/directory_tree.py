@@ -230,16 +230,16 @@ class DirectoryTree(Tree):
             is_dir = node.data.get("is_dir", False)
             is_selected = node.data.get("selected", False)
             
+            # Create a simple label without rich text markup
             if is_selected:
-                # Selected items get a checkmark and colored icon
                 if is_dir:
-                    label = Text("[green]✓ [/green][green]📁[/green] ")
+                    label = Text("✓ 📁 ", style="green")
                 else:
-                    label = Text("[green]✓ [/green][green]📄[/green] ")
-                # Add the name in bold green
-                label.append(Text(path.name, style="bold green"))
+                    label = Text("✓ 📄 ", style="green")
+                # Add the name in green
+                label.append(path.name, style="green bold")
             else:
-                # Unselected items just get a regular icon
+                # Unselected items
                 if is_dir:
                     label = Text("  📁 ")
                 else:
@@ -360,22 +360,25 @@ class DirectoryTree(Tree):
                 continue
                 
             try:
+                # First update this child node's selection state
+                child.data["selected"] = select
+                    
+                # Update node label to reflect selection state
+                child.label = self._get_label_with_selection(child)
+                
                 if child.data.get("is_dir", False):
+                    # Recursively update all its children
                     self._select_node_children(child, select)
                 else:
+                    # This is a file - add/remove from selection set
                     path = child.data.get("path", "")
                     if not path:
                         continue
-                        
-                    child.data["selected"] = select
                     
                     if select:
                         self.selected_files.add(path)
                     else:
                         self.selected_files.discard(path)
-                    
-                    # Update node label
-                    child.label = self._get_label_with_selection(child)
             except Exception as e:
                 self.log(f"Error selecting child node: {e}")
 
