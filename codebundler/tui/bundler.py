@@ -46,11 +46,11 @@ def create_bundle(
         for abs_path in file_paths:
             # Convert to relative path for better readability in the output
             rel_path = os.path.relpath(abs_path, source_dir)
-            
+
             # Detect file extension for this specific file
             file_ext = Path(abs_path).suffix
             file_comment_prefix = get_comment_prefix(file_ext)
-            
+
             try:
                 with open(abs_path, "r", encoding="utf-8") as infile:
                     lines = infile.readlines()

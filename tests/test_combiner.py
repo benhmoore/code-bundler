@@ -53,7 +53,7 @@ class TestBundler(unittest.TestCase):
             str(self.source_dir / "src" / "utils.py"),
             str(self.source_dir / "tests" / "test_main.py"),
         ]
-        
+
         self.src_files = [
             str(self.source_dir / "src" / "main.py"),
             str(self.source_dir / "src" / "utils.py"),
