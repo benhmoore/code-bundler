@@ -54,11 +54,16 @@ class DirectoryTree(Tree):
         self.select_patterns = select_patterns or []
         self.selected_files: Set[str] = set()
         self.file_nodes: Dict[str, TreeNode] = {}
-        self.expand()
+        # Initialize tracker for key press handling
+        self._last_key_press = None
+        self._highlighted_node = None
         
-        # Set up initial tree
+        # Set up initial tree (needs to be done before expanding)
         self.root.data = {"path": str(directory), "is_dir": True, "selected": False}
         self.populate_tree(self.root, directory)
+        
+        # Expand after population
+        self.root.expand()
 
     def populate_tree(self, parent: TreeNode, directory: Path) -> None:
         """Recursively populate the tree with nodes for files and directories.

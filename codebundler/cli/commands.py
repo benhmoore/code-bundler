@@ -10,7 +10,7 @@ from typing import List, Optional
 from rich.table import Table
 
 from codebundler import __version__
-from codebundler.core.combiner import combine_source_files
+# No need for legacy combiner
 from codebundler.utils.helpers import (
     console,
     create_panel,
@@ -357,75 +357,7 @@ def main(args: Optional[List[str]] = None) -> int:
         
         return setup_tui_mode(parsed_args)
 
-        # Old tree-based functionality has been removed in favor of the TUI
-
-        # This section should never be reached now that we always use the TUI
-        # Keeping it for backwards compatibility
-        # ----------------------------------------------------
-        # Direct combine (legacy)
-        # ----------------------------------------------------
-
-        console.print(
-            create_panel(
-                "Direct Combine Mode",
-                f"[bold]Source:[/bold] {parsed_args.source_dir}\n"
-                f"[bold]Output:[/bold] {parsed_args.output_file}\n"
-                f"[bold]Extension:[/bold] {parsed_args.ext}\n"
-                f"[bold]Strip Comments:[/bold] {'Yes' if parsed_args.strip_comments else 'No'}\n"
-                f"[bold]Remove Docstrings:[/bold] {'Yes' if parsed_args.remove_docstrings else 'No'}",
-                "green",
-            )
-        )
-
-        try:
-            # Simple status message instead of progress bar
-            with console.status(
-                "[cyan]Scanning directory and combining files...[/cyan]"
-            ):
-                processed_count = combine_source_files(
-                    source_dir=parsed_args.source_dir,
-                    output_file=parsed_args.output_file,
-                    extension=parsed_args.ext,
-                    ignore_names=parsed_args.ignore_names,
-                    ignore_paths=parsed_args.ignore_paths,
-                    include_names=parsed_args.include_names,
-                    remove_comments=bool(parsed_args.strip_comments),
-                    remove_docstrings=bool(parsed_args.remove_docstrings),
-                )
-
-            print_success(
-                f"Combined {processed_count} files into '{parsed_args.output_file}'."
-            )
-
-            # Display stats
-            total_lines = 0
-            total_size = 0
-            try:
-                with open(parsed_args.output_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    total_lines = content.count("\n") + 1
-                    total_size = len(content)
-            except Exception:
-                pass
-
-            display_summary(
-                "Output Statistics",
-                [
-                    ("Files Processed", processed_count),
-                    ("Total Lines", total_lines),
-                    ("File Size", f"{total_size/1024:.1f} KB"),
-                    ("Output File", parsed_args.output_file),
-                ],
-            )
-
-            # If watch mode is enabled, use the TUI
-            if parsed_args.watch:
-                return setup_tui_mode(parsed_args)
-
-            return 0
-        except Exception as e:
-            print_error(f"Error combining files directly: {e}")
-            return 1
+        # End of main function - TUI is the only mode
 
     except KeyboardInterrupt:
         console.print("\n[bold red]Operation canceled by user.[/bold red]")

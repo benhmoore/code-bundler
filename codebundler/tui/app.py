@@ -11,7 +11,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Footer, Header, Label, Static
 
-from codebundler.core.combiner import combine_from_filelist
+from codebundler.tui.bundler import create_bundle
 from codebundler.tui.widgets.directory_tree import DirectoryTree
 from codebundler.utils.watcher import watch_directory
 
@@ -212,12 +212,12 @@ class CodeBundlerApp(App):
                 for file_path in self.selected_files
             ]
             
-            # Create the bundle
-            processed_count = combine_from_filelist(
+            # Create the bundle with our clean implementation
+            processed_count = create_bundle(
                 source_dir=str(self.watch_path),
                 output_file=self.output_file,
+                file_paths=list(self.selected_files),  # Use absolute paths
                 extension=self.extension,
-                filelist=relative_paths,
                 remove_comments=self.strip_comments,
                 remove_docstrings=self.remove_docstrings,
             )
