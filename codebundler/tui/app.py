@@ -9,7 +9,7 @@ from rich.text import Text
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Footer, Header, Label, Static
+from textual.widgets import Footer, Header, Label, Static, Tree
 
 from codebundler.tui.bundler import create_bundle
 from codebundler.tui.widgets.directory_tree import DirectoryTree
@@ -202,12 +202,27 @@ class CodeBundlerApp(App):
         file_path = str(Path(changed_file).resolve())
         if file_path in self.selected_files:
             self.rebuild_bundle()
+            
+    def on_tree_node_highlighted(self, node):
+        """Update status based on current node highlight."""
+        if hasattr(node, 'data') and node.data:
+            if node.data.get("is_dir", False):
+                self.status_bar.update_status(f"Directory: {node.data.get('path', '')}")
+            elif node.data.get("selectable", False):
+                self.status_bar.update_status(f"File can be selected: {node.data.get('path', '')}", "green")
+            else:
+                self.status_bar.update_status(f"File type not bundled: {node.data.get('path', '')} (not a {self.extension} file)", "yellow")
 
     @on(DirectoryTree.FileSelected)
     def on_file_selected(self, event: DirectoryTree.FileSelected) -> None:
         """Handle file selection events from the directory tree."""
         self.selected_files = event.selected_files
         self.status_bar.update_status(f"{len(self.selected_files)} files selected", "cyan")
+        
+    @on(Tree.NodeHighlighted)
+    def on_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
+        """Handle node highlight events from the tree."""
+        self.on_tree_node_highlighted(event.node)
 
     @work
     async def rebuild_bundle(self) -> None:

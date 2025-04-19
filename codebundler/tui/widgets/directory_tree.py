@@ -113,23 +113,36 @@ class DirectoryTree(Tree):
                     
                 # Include all files, but only track those with matching extension for selection
                 is_matching_file = is_dir or path.name.endswith(self.extension)
-                # Skip non-matching files ONLY if we have a specific file extension to filter by
-                if self.extension and not is_dir and not path.name.endswith(self.extension):
-                    # If we're filtering by extension, don't even show non-matching files
-                    continue
+                
+                # Show all files, but mark only matching ones for potential selection
+                # We don't skip files anymore - we just display all of them
                     
-                # Create the label with appropriate icon
-                icon = "📁 " if is_dir else "📄 "
-                label = Text(f"{icon}{path.name}")
+                # Create the label with appropriate icon and style
+                if is_dir:
+                    icon = "📁 "
+                    label = Text(f"{icon}{path.name}")
+                else:
+                    icon = "📄 "
+                    # Style differently based on whether it's a file we care about for bundling
+                    if path.name.endswith(self.extension):
+                        label = Text(f"{icon}{path.name}")
+                    else:
+                        # Dim files that don't match our extension
+                        label = Text(f"{icon}{path.name}", style="dim")
                 
                 # Create the node
                 node = parent.add(
                     label,
-                    data={"path": str(path), "is_dir": is_dir, "selected": False},
+                    data={
+                        "path": str(path), 
+                        "is_dir": is_dir, 
+                        "selected": False,
+                        "selectable": is_dir or path.name.endswith(self.extension)
+                    },
                 )
                 
-                # Store file nodes for later lookup
-                if not is_dir:
+                # Store file nodes for later lookup - only track selectable files
+                if not is_dir and path.name.endswith(self.extension):
                     self.file_nodes[str(path)] = node
                 
                 # Recursively populate directories
@@ -256,6 +269,11 @@ class DirectoryTree(Tree):
             return
             
         try:
+            # Check if this node is selectable
+            if not node.data.get("selectable", False):
+                # Non-selectable nodes don't respond to selection attempts
+                return
+                
             if node.data.get("is_dir", False):
                 # Toggle selection for all child files
                 is_selected = not self._any_child_selected(node)
