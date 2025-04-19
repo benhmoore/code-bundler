@@ -125,15 +125,29 @@ class DirectoryTree(Tree):
                     label = Text(f"{icon}{path.name}")
                 
                 # Create the node - all files are selectable now
-                node = parent.add(
-                    label,
-                    data={
-                        "path": str(path), 
-                        "is_dir": is_dir, 
-                        "selected": False,
-                        "selectable": True  # All files and directories are selectable
-                    },
-                )
+                if is_dir:
+                    # Directories can be expanded
+                    node = parent.add(
+                        label,
+                        data={
+                            "path": str(path), 
+                            "is_dir": is_dir, 
+                            "selected": False,
+                            "selectable": True
+                        },
+                    )
+                else:
+                    # Files can't be expanded, so set allow_expand=False to hide the arrow
+                    node = parent.add(
+                        label,
+                        data={
+                            "path": str(path), 
+                            "is_dir": is_dir, 
+                            "selected": False,
+                            "selectable": True
+                        },
+                        allow_expand=False  # No expansion arrows for files
+                    )
                 
                 # Store file nodes for later lookup - track all files
                 if not is_dir:
