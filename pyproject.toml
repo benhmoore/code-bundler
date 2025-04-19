@@ -28,7 +28,8 @@ keywords = ["code", "source code", "llm", "combine", "transform"]
 requires-python = ">=3.8"
 dependencies = [
     "rich>=10.0.0",
-    "watchdog>=2.1.0"
+    "watchdog>=2.1.0",
+    "textual>=0.43.1"
 ]
 
 [project.optional-dependencies]
@@ -42,7 +43,7 @@ Homepage = "https://github.com/mooresm/codebundler"
 codebundler = "codebundler.cli.commands:main"
 
 [tool.setuptools]
-packages = ["codebundler", "codebundler.core", "codebundler.cli", "codebundler.utils"]
+packages = ["codebundler", "codebundler.core", "codebundler.cli", "codebundler.utils", "codebundler.tui", "codebundler.tui.widgets"]
 
 [tool.black]
 line-length = 88

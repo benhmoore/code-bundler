@@ -21,9 +21,9 @@ class CodeBundlerHandler(FileSystemEventHandler):
         self,
         source_dir: str,
         extension: str,
-        ignore_names: List[str],
-        ignore_paths: List[str],
-        include_names: List[str],
+        ignore_names: List[str] = None,
+        ignore_paths: List[str] = None,
+        include_names: List[str] = None,
         filelist: List[str] = None,
         use_tree: bool = False,
         callback: Callable[[str], None] = None,
@@ -31,11 +31,12 @@ class CodeBundlerHandler(FileSystemEventHandler):
         """Initialize the handler with filters and callback."""
         self.source_dir = source_dir
         self.extension = extension
-        self.ignore_names = ignore_names
-        self.ignore_paths = ignore_paths
-        self.include_names = include_names
-        self.filelist = filelist
-        self.use_tree = use_tree
+        self.ignore_names = ignore_names or []
+        self.ignore_paths = ignore_paths or []
+        self.include_names = include_names or []
+        # No more legacy tree-based selection
+        self.filelist = None
+        self.use_tree = False
         self.callback = callback
         self.last_run = 0
         self.debounce_time = 0.5  # seconds
@@ -60,9 +61,7 @@ class CodeBundlerHandler(FileSystemEventHandler):
         if not should_include(filename, self.include_names):
             return
 
-        # For tree mode, check if the file is in our list
-        if self.use_tree and self.filelist and rel_path not in self.filelist:
-            return
+        # No more tree mode
 
         # Debounce to prevent multiple rapid rebuilds
         current_time = time.time()
@@ -81,11 +80,9 @@ class CodeBundlerHandler(FileSystemEventHandler):
 def watch_directory(
     source_dir: str,
     extension: str,
-    ignore_names: List[str],
-    ignore_paths: List[str],
-    include_names: List[str],
-    filelist: List[str] = None,
-    use_tree: bool = False,
+    ignore_names: List[str] = None,
+    ignore_paths: List[str] = None,
+    include_names: List[str] = None,
     callback: Callable[[str], None] = None,
 ) -> Observer:
     """
@@ -97,8 +94,6 @@ def watch_directory(
         ignore_names: List of filename patterns to ignore
         ignore_paths: List of path patterns to ignore
         include_names: List of filename patterns to include
-        filelist: List of files to include (for tree mode)
-        use_tree: Whether we're using a tree file
         callback: Function to call when changes are detected
 
     Returns:
@@ -110,8 +105,6 @@ def watch_directory(
         ignore_names=ignore_names,
         ignore_paths=ignore_paths,
         include_names=include_names,
-        filelist=filelist,
-        use_tree=use_tree,
         callback=callback,
     )
 
