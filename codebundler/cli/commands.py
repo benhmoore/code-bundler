@@ -406,10 +406,10 @@ def main(args: Optional[List[str]] = None) -> int:
         # 3) Direct combine (no tree)
         # ----------------------------------------------------
         if not parsed_args.source_dir:
-            print_error("No source_dir provided.")
+            print_error("No source directory (--watch-path) provided.")
             return 1
         if not parsed_args.output_file:
-            print_error("No output_file provided.")
+            print_error("No output file (--output) provided.")
             return 1
         if not parsed_args.ext:
             print_error("No extension provided.")
