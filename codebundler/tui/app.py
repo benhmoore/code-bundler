@@ -23,8 +23,8 @@ class StatusBar(Static):
 
     def __init__(self) -> None:
         """Initialize the status bar with default message."""
-        super().__init__("Ready")
-        self.status = "Ready"
+        super().__init__("Ready - Click on files to select them or press Space to toggle selection")
+        self.status = "Ready - Click on files to select them or press Space to toggle selection"
 
     def update_status(self, message: str, style: str = "white") -> None:
         """Update the status message with optional styling."""
@@ -42,18 +42,25 @@ class CodeBundlerApp(App):
     }
     
     #sidebar {
-        width: 30%;
-        min-width: 20;
+        width: 50%;  /* Make wider to show more of the file tree */
+        min-width: 30;
         border-right: solid $primary;
     }
     
     #file-tree {
         height: 100%;
         overflow: auto;
+        background: $surface-darken-1;  /* Better contrast for tree */
+    }
+    
+    Tree:focus > .tree--cursor {
+        background: $accent;  /* Highlight selected item in tree */
+        color: $text;
     }
     
     #main-content {
-        width: 70%;
+        width: 50%;
+        padding: 1;
     }
     
     #status-bar {
@@ -78,6 +85,7 @@ class CodeBundlerApp(App):
         ("r", "rebuild", "Rebuild"),
         ("a", "select_all", "Select All"),
         ("n", "deselect_all", "Deselect All"),
+        ("space", "toggle_selection", "Toggle Selection"),
     ]
 
     # Define class variables to hold widget references
@@ -127,7 +135,7 @@ class CodeBundlerApp(App):
             yield Header()
             with Horizontal():
                 with Vertical(id="sidebar"):
-                    yield Label("File Selection", classes="title")
+                    yield Label("File Selection (click to select)", classes="title")
                     yield DirectoryTree(
                         self.watch_path,
                         id="file-tree",
@@ -261,6 +269,11 @@ class CodeBundlerApp(App):
     def action_deselect_all(self) -> None:
         """Deselect all files in the tree."""
         self.tree.deselect_all_files()
+        
+    def action_toggle_selection(self) -> None:
+        """Toggle selection of the currently highlighted node."""
+        if self.tree._highlighted_node:
+            self.tree.toggle_selection(self.tree._highlighted_node)
 
     def on_unmount(self) -> None:
         """Clean up when the application exits."""

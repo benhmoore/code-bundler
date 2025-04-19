@@ -112,8 +112,11 @@ class DirectoryTree(Tree):
                 ):
                     continue
                     
-                # Only include the file if it has the right extension
-                if not is_dir and not path.name.endswith(self.extension):
+                # Include all files, but only track those with matching extension for selection
+                is_matching_file = is_dir or path.name.endswith(self.extension)
+                # Skip non-matching files ONLY if we have a specific file extension to filter by
+                if self.extension and not is_dir and not path.name.endswith(self.extension):
+                    # If we're filtering by extension, don't even show non-matching files
                     continue
                     
                 # Create the label with appropriate icon
@@ -216,12 +219,22 @@ class DirectoryTree(Tree):
         is_dir = node.data["is_dir"]
         is_selected = node.data["selected"]
         
-        icon = "📁 " if is_dir else "📄 "
+        # Use more prominent selection indicators
+        if is_dir:
+            icon = "📁 " if not is_selected else "[green]📁 "
+        else:
+            icon = "📄 " if not is_selected else "[green]📄 "
+        
         select_icon = "[green]✓ " if is_selected else ""
         
         label = Text(f"{select_icon}{icon}{path.name}")
         if is_selected:
             label.stylize("bold green")
+        
+        # Add selection indicator at the end too for better visibility
+        if is_selected and not is_dir:
+            label.append(" [green]✓")
+            
         return label
 
     def toggle_selection(self, node: TreeNode) -> None:
@@ -316,13 +329,11 @@ class DirectoryTree(Tree):
 
     @on(Tree.NodeSelected)
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        """Handle node selection events."""
+        """Handle node selection events - automatically toggle node when clicked."""
         node = event.node
+        # Always toggle selection when a node is selected (clicked)
+        self.toggle_selection(node)
         
-        # Toggle selection on space key or store current selection for navigation
-        if self._last_key_press == " ":
-            self.toggle_selection(node)
-            
     @on(Tree.NodeHighlighted)
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
         """Track highlighted nodes for keyboard navigation."""
