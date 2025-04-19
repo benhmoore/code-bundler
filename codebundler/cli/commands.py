@@ -123,16 +123,16 @@ def setup_parser() -> argparse.ArgumentParser:
         nargs="*",
         metavar="PATTERN",
         default=[],
-        help="Patterns to ignore in tree view (e.g., __pycache__ or *.md)",
+        help="Patterns to ignore in tree view (e.g., '__pycache__' '*.meta')",
     )
     
     tui_group.add_argument(
         "--select",
         dest="select_patterns",
-        type=str,
-        metavar="PATTERNS",
-        default="",
-        help="Comma-separated glob patterns for initial file selection (e.g., *.py,docs/*.md)",
+        nargs="*",
+        metavar="PATTERN",
+        default=[],
+        help="Glob patterns for initial file selection (e.g., '*.py' 'docs/*.md')",
     )
     
     tui_group.add_argument(
@@ -351,10 +351,7 @@ def main(args: Optional[List[str]] = None) -> int:
         # Tree functionality has been removed in favor of the TUI
 
         # TUI is now the only interface
-        # Split comma-separated select patterns if provided as a string
-        if parsed_args.select_patterns and isinstance(parsed_args.select_patterns, str):
-            parsed_args.select_patterns = [p.strip() for p in parsed_args.select_patterns.split(',') if p.strip()]
-        
+        # select_patterns is already a list from nargs="*"
         return setup_tui_mode(parsed_args)
 
         # End of main function - TUI is the only mode
