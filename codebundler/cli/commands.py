@@ -118,63 +118,46 @@ def setup_parser() -> argparse.ArgumentParser:
     tui_group = parser.add_argument_group("TUI Options")
     
     tui_group.add_argument(
-        "--hide-patterns",
+        "--ignore",
+        dest="hide_patterns",
         nargs="*",
         metavar="PATTERN",
         default=[],
-        help="Glob patterns to hide from tree view (e.g. __pycache__/, *.meta).",
+        help="Patterns to ignore in tree view (e.g., __pycache__ or *.md)",
     )
     
     tui_group.add_argument(
-        "--select-patterns",
-        nargs="*",
-        metavar="PATTERN",
-        default=[],
-        help="Glob patterns for initial file selection in the tree (e.g. *.py, docs/*.md).",
+        "--select",
+        dest="select_patterns",
+        type=str,
+        metavar="PATTERNS",
+        default="",
+        help="Comma-separated glob patterns for initial file selection (e.g., *.py,docs/*.md)",
     )
     
     tui_group.add_argument(
-        "--confirm-selection",
-        action="store_true",
-        default=True,
-        help="Require user confirmation in the TUI before initial bundle/watch (default: True).",
-    )
-    
-    tui_group.add_argument(
-        "--no-confirm-selection",
+        "-y",
+        "--yes",
         action="store_false",
         dest="confirm_selection",
-        help="Start bundling immediately without confirmation in TUI mode.",
+        help="Auto-confirm directory tree and begin watching immediately",
     )
     
-    # TUI mode - primary mode of operation
-    mode_group.add_argument(
-        "--interactive",
-        "-i",
-        action="store_true",
-        dest="watch",
-        help="Run in TUI mode (alias for --watch).",
-    )
+    # The TUI is now the default and only mode of operation
+    
+    # The old tree-based functionality has been removed in favor of the TUI
 
-    # Tree-based functionality has been removed in favor of the TUI
-
-    # Basic options (now with required flags)
+    # Required arguments 
     basic_group.add_argument(
-        "--watch-path", 
-        dest="source_dir",
-        default=None, 
-        help="Directory to search/watch (previously 'source_dir')."
+        "source_dir", 
+        metavar="DIRECTORY",
+        help="Directory to search/watch (required)"
     )
 
     basic_group.add_argument(
-        "--output", 
-        dest="output_file",
-        default=None, 
-        help="Output file path (previously 'output_file')."
-    )
-
-    basic_group.add_argument(
-        "--ext", metavar="EXT", help="File extension (e.g., .py, .cs, .js, .php)."
+        "output_file", 
+        metavar="OUTPUT",
+        help="Output file path (required)"
     )
 
     # Filtering options
@@ -267,11 +250,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--quiet", "-q", action="store_true", help="Suppress non-error output."
     )
 
-    output_group.add_argument(
-        "--watch",
-        action="store_true",
-        help="Launch the interactive TUI (primary interface) for file selection and real-time updates.",
-    )
+    # TUI is now the only interface - no need for a watch flag
 
     # We want None as default so we can detect if user explicitly set these flags
     parser.set_defaults(strip_comments=None, remove_docstrings=None)
@@ -309,16 +288,7 @@ def setup_tui_mode(parsed_args):
         Exit code
     """
     try:
-        # Check for required arguments
-        if not parsed_args.source_dir:
-            print_error("No source directory (--watch-path) provided.")
-            return 1
-        if not parsed_args.output_file:
-            print_error("No output file (--output) provided.")
-            return 1
-        if not parsed_args.ext:
-            print_error("No extension provided.")
-            return 1
+        # Source dir and output file are now required positional arguments
 
         # Import the TUI app
         try:
@@ -336,7 +306,7 @@ def setup_tui_mode(parsed_args):
         app = CodeBundlerApp(
             watch_path=parsed_args.source_dir,
             output_file=parsed_args.output_file,
-            extension=parsed_args.ext,
+            # Extension will be auto-detected from the output file
             hide_patterns=parsed_args.hide_patterns,
             select_patterns=parsed_args.select_patterns,
             ignore_names=parsed_args.ignore_names,
@@ -380,40 +350,20 @@ def main(args: Optional[List[str]] = None) -> int:
 
         # Tree functionality has been removed in favor of the TUI
 
-        # Check for required arguments if not in watch/TUI mode
-        needs_essential_args = (
-            not parsed_args.source_dir
-            or not parsed_args.output_file
-            or not parsed_args.ext
-        )
+        # TUI is now the only interface
+        # Split comma-separated select patterns if provided as a string
+        if parsed_args.select_patterns and isinstance(parsed_args.select_patterns, str):
+            parsed_args.select_patterns = [p.strip() for p in parsed_args.select_patterns.split(',') if p.strip()]
         
-        # If watch mode (TUI) is enabled, launch it
-        if parsed_args.watch:
-            if needs_essential_args:
-                print_error("Missing required arguments for TUI mode:")
-                if not parsed_args.source_dir:
-                    print_error("  --watch-path: Source directory is required")
-                if not parsed_args.output_file:
-                    print_error("  --output: Output file path is required")
-                if not parsed_args.ext:
-                    print_error("  --ext: File extension is required")
-                return 1
-            return setup_tui_mode(parsed_args)
+        return setup_tui_mode(parsed_args)
 
         # Old tree-based functionality has been removed in favor of the TUI
 
+        # This section should never be reached now that we always use the TUI
+        # Keeping it for backwards compatibility
         # ----------------------------------------------------
-        # 3) Direct combine (no tree)
+        # Direct combine (legacy)
         # ----------------------------------------------------
-        if not parsed_args.source_dir:
-            print_error("No source directory (--watch-path) provided.")
-            return 1
-        if not parsed_args.output_file:
-            print_error("No output file (--output) provided.")
-            return 1
-        if not parsed_args.ext:
-            print_error("No extension provided.")
-            return 1
 
         console.print(
             create_panel(

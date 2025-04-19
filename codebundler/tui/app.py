@@ -84,7 +84,7 @@ class CodeBundlerApp(App):
         self,
         watch_path: str,
         output_file: str,
-        extension: str,
+        extension: str = None,
         hide_patterns: List[str] = None,
         select_patterns: List[str] = None,
         ignore_names: List[str] = None,
@@ -98,7 +98,13 @@ class CodeBundlerApp(App):
         super().__init__()
         self.watch_path = Path(watch_path).resolve()
         self.output_file = output_file
-        self.extension = extension if extension.startswith('.') else f'.{extension}'
+        
+        # Auto-detect extension from output file if not provided
+        if extension is None:
+            output_ext = Path(output_file).suffix
+            self.extension = output_ext if output_ext else '.py'  # Default to .py if no extension
+        else:
+            self.extension = extension if extension.startswith('.') else f'.{extension}'
         self.hide_patterns = hide_patterns or []
         self.select_patterns = select_patterns or []
         self.ignore_names = ignore_names or []
