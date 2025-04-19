@@ -37,7 +37,7 @@ class HelpScreen(ModalScreen):
         padding: 1;
         width: 100%;
         color: $text;
-        font-weight: bold;
+        text-style: bold;
         margin-bottom: 1;
     }
     
@@ -100,10 +100,6 @@ class HelpScreen(ModalScreen):
                     yield Static(key, classes="key")
                     yield Static(description, classes="description")
             
-            # Additional usage information
-            yield Static("\nMouse Controls:", classes="section-title")
-            yield Static("• Click directories to expand/collapse")
-            yield Static("• Click files to toggle selection")
             
             with Horizontal(id="close-button-row"):
                 yield Button("Close (Esc)", id="close-button", variant="primary")
