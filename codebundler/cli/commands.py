@@ -116,12 +116,45 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Show version information and exit.",
     )
 
-    # Operation modes
+    # TUI mode options
+    tui_group = parser.add_argument_group("TUI Options")
+    
+    tui_group.add_argument(
+        "--hide-patterns",
+        nargs="*",
+        metavar="PATTERN",
+        default=[],
+        help="Glob patterns to hide from tree view (e.g. __pycache__/, *.meta).",
+    )
+    
+    tui_group.add_argument(
+        "--select-patterns",
+        nargs="*",
+        metavar="PATTERN",
+        default=[],
+        help="Glob patterns for initial file selection in the tree (e.g. *.py, docs/*.md).",
+    )
+    
+    tui_group.add_argument(
+        "--confirm-selection",
+        action="store_true",
+        default=True,
+        help="Require user confirmation in the TUI before initial bundle/watch (default: True).",
+    )
+    
+    tui_group.add_argument(
+        "--no-confirm-selection",
+        action="store_false",
+        dest="confirm_selection",
+        help="Start bundling immediately without confirmation in TUI mode.",
+    )
+    
+    # Legacy interactive mode (to be deprecated)
     mode_group.add_argument(
         "--interactive",
         "-i",
         action="store_true",
-        help="Run in guided, interactive mode.",
+        help="Run in guided, interactive mode (DEPRECATED: use --watch for TUI mode).",
     )
 
     mode_group.add_argument(
@@ -134,13 +167,19 @@ def setup_parser() -> argparse.ArgumentParser:
         "--use-tree", metavar="FILE", help="Path to an edited tree file to combine."
     )
 
-    # Basic options (possibly missing in interactive mode)
+    # Basic options (now with required flags)
     basic_group.add_argument(
-        "source_dir", nargs="?", default=None, help="Directory to search."
+        "--watch-path", 
+        dest="source_dir",
+        default=None, 
+        help="Directory to search/watch (previously 'source_dir')."
     )
 
     basic_group.add_argument(
-        "output_file", nargs="?", default=None, help="Output file path."
+        "--output", 
+        dest="output_file",
+        default=None, 
+        help="Output file path (previously 'output_file')."
     )
 
     basic_group.add_argument(
@@ -240,7 +279,7 @@ def setup_parser() -> argparse.ArgumentParser:
     output_group.add_argument(
         "--watch",
         action="store_true",
-        help="Watch for file changes and rebuild automatically.",
+        help="Launch the TUI for interactive file selection and real-time updates.",
     )
 
     # We want None as default so we can detect if user explicitly set these flags

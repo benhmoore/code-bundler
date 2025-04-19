@@ -8,12 +8,12 @@ Here are the tasks involved in refactoring the `code-bundler` to use an interact
     -   [x] Update `setup.py` or `pyproject.toml`.
     -   [x] Install the dependency in the development environment.
 
--   [ ] **2. Refactor CLI Argument Parsing (`codebundler/cli/commands.py`):**
-    -   [ ] Replace positional `source_dir`, `output_file` with flags (`--watch-path`, `--output`).
-    -   [ ] Add new flags: `--hide-patterns`, `--select-patterns`, `--confirm-selection`.
-    -   [ ] Modify `--watch` flag behaviour to launch the TUI.
-    -   [ ] Remove `--interactive` flag.
-    -   [ ] Deprecate or adapt `--export-tree` / `--use-tree`.
+-   [x] **2. Refactor CLI Argument Parsing (`codebundler/cli/commands.py`):**
+    -   [x] Replace positional `source_dir`, `output_file` with flags (`--watch-path`, `--output`).
+    -   [x] Add new flags: `--hide-patterns`, `--select-patterns`, `--confirm-selection`.
+    -   [x] Modify `--watch` flag behaviour to launch the TUI.
+    -   [x] Update `--interactive` flag (marked as deprecated).
+    -   [ ] Adapt `--export-tree` / `--use-tree` functionality in TUI.
 
 -   [ ] **3. Create Main TUI Application (New Module/Files):**
     -   [ ] Create a new module (e.g., `codebundler/tui/`).
