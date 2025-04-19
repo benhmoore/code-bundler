@@ -1,15 +1,15 @@
-"""Tests for the combiner module."""
+"""Tests for the TUI bundler module."""
 
 import os
 import tempfile
 import unittest
 from pathlib import Path
 
-from codebundler.core.combiner import combine_from_filelist, combine_source_files
+from codebundler.tui.bundler import create_bundle
 
 
-class TestCombiner(unittest.TestCase):
-    """Test cases for the combiner module."""
+class TestBundler(unittest.TestCase):
+    """Test cases for the TUI bundler module."""
 
     def setUp(self):
         """Set up test environment."""
@@ -47,25 +47,34 @@ class TestCombiner(unittest.TestCase):
             f.write("    # Test the main function\n")
             f.write("    main()\n")
 
+        # Store absolute paths for testing
+        self.all_files = [
+            str(self.source_dir / "src" / "main.py"),
+            str(self.source_dir / "src" / "utils.py"),
+            str(self.source_dir / "tests" / "test_main.py"),
+        ]
+        
+        self.src_files = [
+            str(self.source_dir / "src" / "main.py"),
+            str(self.source_dir / "src" / "utils.py"),
+        ]
+
     def tearDown(self):
         """Clean up after tests."""
         self.temp_dir.cleanup()
 
-    def test_combine_source_files(self):
-        """Test combining source files directly."""
+    def test_create_bundle_all_files(self):
+        """Test bundling all files without transformations."""
         # Create a temporary file for the output
         with tempfile.NamedTemporaryFile(delete=False) as output_file:
             output_path = output_file.name
 
         try:
             # Combine the files
-            file_count = combine_source_files(
+            file_count = create_bundle(
                 source_dir=str(self.source_dir),
                 output_file=output_path,
-                extension=".py",
-                ignore_names=[],
-                ignore_paths=[],
-                include_names=[],
+                file_paths=self.all_files,
                 remove_comments=False,
                 remove_docstrings=False,
             )
@@ -102,21 +111,18 @@ class TestCombiner(unittest.TestCase):
             if os.path.exists(output_path):
                 os.unlink(output_path)
 
-    def test_combine_source_files_with_transformations(self):
-        """Test combining source files with transformations."""
+    def test_create_bundle_with_transformations(self):
+        """Test bundling files with transformations."""
         # Create a temporary file for the output
         with tempfile.NamedTemporaryFile(delete=False) as output_file:
             output_path = output_file.name
 
         try:
             # Combine the files with transformations
-            file_count = combine_source_files(
+            file_count = create_bundle(
                 source_dir=str(self.source_dir),
                 output_file=output_path,
-                extension=".py",
-                ignore_names=[],
-                ignore_paths=[],
-                include_names=[],
+                file_paths=self.all_files,
                 remove_comments=True,
                 remove_docstrings=True,
             )
@@ -149,22 +155,18 @@ class TestCombiner(unittest.TestCase):
             if os.path.exists(output_path):
                 os.unlink(output_path)
 
-    def test_combine_from_filelist(self):
-        """Test combining files from a list."""
+    def test_create_bundle_subset_files(self):
+        """Test bundling a subset of files."""
         # Create a temporary file for the output
         with tempfile.NamedTemporaryFile(delete=False) as output_file:
             output_path = output_file.name
 
         try:
-            # Define the list of files to include
-            filelist = ["src/main.py", "src/utils.py"]
-
-            # Combine the files
-            file_count = combine_from_filelist(
+            # Combine only the src files
+            file_count = create_bundle(
                 source_dir=str(self.source_dir),
                 output_file=output_path,
-                extension=".py",
-                filelist=filelist,
+                file_paths=self.src_files,
                 remove_comments=False,
                 remove_docstrings=False,
             )

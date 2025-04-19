@@ -10,7 +10,7 @@ from typing import List, Optional
 from rich.table import Table
 
 from codebundler import __version__
-# No need for legacy combiner
+# Import utility functions
 from codebundler.utils.helpers import (
     console,
     create_panel,
@@ -100,11 +100,9 @@ def setup_parser() -> argparse.ArgumentParser:
 
     # Group commands by category for better help display
     info_group = parser.add_argument_group("Information")
-    mode_group = parser.add_argument_group("Operation Modes")
     basic_group = parser.add_argument_group("Basic Options")
-    filter_group = parser.add_argument_group("Filtering Options")
+    tui_group = parser.add_argument_group("TUI Options")
     transform_group = parser.add_argument_group("Transformation Options")
-    output_group = parser.add_argument_group("Output Options")
 
     # Information options
     info_group.add_argument(
@@ -114,8 +112,7 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Show version information and exit.",
     )
 
-    # TUI mode options
-    tui_group = parser.add_argument_group("TUI Options")
+    # Configure TUI specific options
     
     tui_group.add_argument(
         "--ignore",
@@ -147,9 +144,6 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Auto-confirm directory tree and begin watching immediately",
     )
     
-    # The TUI is now the default and only mode of operation
-    
-    # The old tree-based functionality has been removed in favor of the TUI
 
     # Required arguments 
     basic_group.add_argument(
@@ -164,44 +158,7 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Output file path (required)"
     )
 
-    # Filtering options
-    filter_group.add_argument(
-        "--ignore-names",
-        nargs="*",
-        metavar="KEYWORD",
-        default=[],
-        help="Partial filenames to ignore.",
-    )
-
-    filter_group.add_argument(
-        "--ignore-paths",
-        nargs="*",
-        metavar="PATH",
-        default=[],
-        help="Partial relative paths to ignore.",
-    )
-
-    filter_group.add_argument(
-        "--include-names",
-        nargs="*",
-        metavar="KEYWORD",
-        default=[],
-        help="Only include files whose names contain these keywords.",
-    )
-
-    filter_group.add_argument(
-        "--recursive",
-        action="store_true",
-        default=True,
-        help="Search directories recursively (default: True).",
-    )
-
-    filter_group.add_argument(
-        "--no-recursive",
-        action="store_false",
-        dest="recursive",
-        help="Don't search directories recursively.",
-    )
+    # Legacy filtering options - moved to TUI selection
 
     # Transformation options
     transform_group.add_argument(
@@ -228,21 +185,8 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Don't remove docstrings (override).",
     )
 
-    # Output options
-    output_group.add_argument(
-        "--print-tree",
-        action="store_true",
-        help="Print the directory tree to the console.",
-    )
-
-    output_group.add_argument(
-        "--format",
-        choices=["default", "condensed", "expanded"],
-        default="default",
-        help="Output format style (default: default).",
-    )
-
-    output_group.add_argument(
+    # Basic verbosity options
+    basic_group.add_argument(
         "--verbose",
         "-v",
         action="count",
@@ -250,11 +194,10 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Increase verbosity (can be used multiple times)",
     )
 
-    output_group.add_argument(
+    basic_group.add_argument(
         "--quiet", "-q", action="store_true", help="Suppress non-error output."
     )
 
-    # TUI is now the only interface - no need for a watch flag
 
     # We want None as default so we can detect if user explicitly set these flags
     parser.set_defaults(strip_comments=None, remove_docstrings=None)
@@ -300,7 +243,7 @@ def setup_tui_mode(parsed_args):
         except ImportError as e:
             print_error(
                 f"Error importing TUI modules: {e}\n"
-                "Make sure all dependencies are installed: pip install codebundler[tui]"
+                "Make sure all dependencies are installed: pip install -e ."
             )
             return 1
 
@@ -313,9 +256,9 @@ def setup_tui_mode(parsed_args):
             # Extension will be auto-detected from the output file
             hide_patterns=parsed_args.hide_patterns,
             select_patterns=parsed_args.select_patterns,
-            ignore_names=parsed_args.ignore_names,
-            ignore_paths=parsed_args.ignore_paths,
-            include_names=parsed_args.include_names,
+            ignore_names=None,
+            ignore_paths=None,
+            include_names=None,
             strip_comments=bool(parsed_args.strip_comments),
             remove_docstrings=bool(parsed_args.remove_docstrings),
             confirm_selection=parsed_args.confirm_selection,
@@ -352,9 +295,7 @@ def main(args: Optional[List[str]] = None) -> int:
         if parsed_args.verbose >= 0:
             display_welcome_banner()
 
-        # Tree functionality has been removed in favor of the TUI
-
-        # TUI is now the only interface
+        # Launch TUI interface
         # Parse comma-separated patterns into lists
         if parsed_args.select_patterns and isinstance(parsed_args.select_patterns, str):
             parsed_args.select_patterns = [p.strip() for p in parsed_args.select_patterns.split(',') if p.strip()]
@@ -364,7 +305,6 @@ def main(args: Optional[List[str]] = None) -> int:
             
         return setup_tui_mode(parsed_args)
 
-        # End of main function - TUI is the only mode
 
     except KeyboardInterrupt:
         console.print("\n[bold red]Operation canceled by user.[/bold red]")

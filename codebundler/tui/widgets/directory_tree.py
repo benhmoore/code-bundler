@@ -280,9 +280,29 @@ class DirectoryTree(Tree):
         try:
             # All nodes should be selectable now
             if node.data.get("is_dir", False):
+                # Get the path of the directory
+                dir_path = node.data.get("path", "")
+                if not dir_path:
+                    self.log(f"No path found for directory node: {node}")
+                    return
+                
+                # Check if any child is selected
+                has_selected_children = self._any_child_selected(node)
+                
+                # Toggle based on current selection state
+                is_selected = not has_selected_children
+                
                 # Toggle selection for all child files
-                is_selected = not self._any_child_selected(node)
                 self._select_node_children(node, is_selected)
+                
+                # For empty directories or directories with only subdirectories (no files)
+                # we need to handle them specially to ensure they can be toggled
+                if not hasattr(node, "children") or len(node.children) == 0:
+                    # No children - add/remove directory itself to selection set
+                    if is_selected:
+                        self.selected_files.add(dir_path)
+                    else:
+                        self.selected_files.discard(dir_path)
                 
                 # Also mark the directory itself as selected/deselected for visual feedback
                 node.data["selected"] = is_selected
@@ -329,21 +349,34 @@ class DirectoryTree(Tree):
         self.post_message(self.FileSelected(self.selected_files.copy()))
 
     def _any_child_selected(self, node: TreeNode) -> bool:
-        """Check if any child of the node is selected.
+        """Check if any child of the node is selected, or if the node itself is selected.
         
         Args:
             node: The node to check
             
         Returns:
-            True if any child is selected, False otherwise
+            True if any child is selected or the node is selected, False otherwise
         """
         # Safety check for nodes without data
         if not hasattr(node, 'data') or node.data is None:
             return False
             
+        # If it's a file, check its own selection state
         if not node.data.get("is_dir", False):
             return node.data.get("selected", False)
         
+        # For directories, we need to check a few cases
+        path = node.data.get("path", "")
+        
+        # First check if the directory itself is directly in the selected_files
+        if path in self.selected_files:
+            return True
+            
+        # For empty directories, they should be selected if they're in the selected_files set
+        if not hasattr(node, "children") or len(node.children) == 0:
+            return path in self.selected_files
+        
+        # For non-empty directories, check all children
         if hasattr(node, "children"):
             for child in node.children:
                 # Skip children without data
@@ -365,9 +398,18 @@ class DirectoryTree(Tree):
             node: The parent node
             select: Whether to select (True) or deselect (False)
         """
-        if not hasattr(node, "children"):
+        # For directories with no children, add the directory itself
+        if not hasattr(node, "children") or len(node.children) == 0:
+            # This is an empty directory - add/remove it from selection set
+            dir_path = node.data.get("path", "")
+            if dir_path:
+                if select:
+                    self.selected_files.add(dir_path)
+                else:
+                    self.selected_files.discard(dir_path)
             return
             
+        # Handle children
         for child in node.children:
             # Skip children without data
             if not hasattr(child, 'data') or child.data is None:
@@ -381,8 +423,20 @@ class DirectoryTree(Tree):
                 child.label = self._get_label_with_selection(child)
                 
                 if child.data.get("is_dir", False):
-                    # Recursively update all its children
-                    self._select_node_children(child, select)
+                    # Check if this directory is empty
+                    has_children = hasattr(child, "children") and len(child.children) > 0
+                    
+                    if not has_children:
+                        # This is an empty directory - add/remove it from selection set
+                        dir_path = child.data.get("path", "")
+                        if dir_path:
+                            if select:
+                                self.selected_files.add(dir_path)
+                            else:
+                                self.selected_files.discard(dir_path)
+                    else:
+                        # Recursively update all its children
+                        self._select_node_children(child, select)
                 else:
                     # This is a file - add/remove from selection set
                     path = child.data.get("path", "")
@@ -396,40 +450,98 @@ class DirectoryTree(Tree):
             except Exception as e:
                 self.log(f"Error selecting child node: {e}")
 
-    # Override the default click behavior
+    # Handle clicks - click on directory to expand/collapse, click on file to select
     async def on_click(self, event) -> None:
-        """Handle click events on the tree - use click for selection not expansion."""
-        # Get the node that was clicked
-        hit_info = self.get_node_at(event.x, event.y)
-        if hit_info is None:
-            return
-            
-        node, _ = hit_info
-        if node is None:
-            return
-            
+        """Handle click events on the tree."""
         try:
-            # Only toggle if the node has data
-            if hasattr(node, 'data') and node.data is not None:
-                # Toggle selection when a node is clicked
-                self.toggle_selection(node)
-                # Also set focus to this node
-                self.select_node(node)
+            # We need to identify which node was clicked
+            # In Textual 3.1.0, this information is in the event's style metadata
+            if hasattr(event, 'style') and hasattr(event.style, 'meta'):
+                node_line = event.style.meta.get('line', None)
+                
+                if node_line is not None:
+                    # Clear cached nodes to ensure we get fresh data
+                    if hasattr(self, '_tree_nodes'):
+                        delattr(self, '_tree_nodes')
+                        
+                    # Get all visible nodes
+                    nodes = list(self.nodes)
+                    
+                    # Check if the line number is within range
+                    if 0 <= node_line < len(nodes):
+                        clicked_node = nodes[node_line]
+                        
+                        # Now handle the node based on its type
+                        if hasattr(clicked_node, 'data') and clicked_node.data:
+                            is_dir = clicked_node.data.get("is_dir", False)
+                            
+                            if is_dir:
+                                # For directories, toggle expansion
+                                if hasattr(clicked_node, 'is_expanded'):
+                                    if clicked_node.is_expanded and hasattr(clicked_node, 'collapse'):
+                                        await clicked_node.collapse()
+                                    elif hasattr(clicked_node, 'expand'):
+                                        await clicked_node.expand()
+                                        
+                                # Clear the cache again after expansion changes
+                                if hasattr(self, '_tree_nodes'):
+                                    delattr(self, '_tree_nodes')
+                            else:
+                                # For files, toggle selection
+                                event.prevent_default()  # Prevent default behavior
+                                self.toggle_selection(clicked_node)
+                                
+                        # Highlight the clicked node
+                        self.select_node(clicked_node)
         except Exception as e:
             self.log(f"Error handling click: {e}")
+            
+    @property
+    def nodes(self):
+        """Get all visible nodes in the tree."""
+        if hasattr(self, '_tree_nodes'):
+            return self._tree_nodes
+            
+        nodes = []
+        
+        def collect_visible_nodes(node):
+            nodes.append(node)
+            if hasattr(node, 'is_expanded') and node.is_expanded and hasattr(node, 'children'):
+                for child in node.children:
+                    collect_visible_nodes(child)
+                    
+        if hasattr(self.root, 'children'):
+            for child in self.root.children:
+                collect_visible_nodes(child)
+                
+        self._tree_nodes = nodes
+        return nodes
             
     # Keep this for handling keyboard selection
     @on(Tree.NodeSelected)
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         """Handle node selection events from keyboard navigation."""
-        # This event will still happen from keyboard navigation
-        # We don't toggle selection here since Enter now does that 
+        # Just track the highlighted node - no selection happens here
         self._highlighted_node = event.node
         
     @on(Tree.NodeHighlighted)
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
         """Track highlighted nodes for keyboard navigation."""
         self._highlighted_node = event.node
+        
+    @on(Tree.NodeExpanded)
+    def on_tree_node_expanded(self, event: Tree.NodeExpanded) -> None:
+        """Handle node expansion events."""
+        # Clear the nodes cache since the tree structure changed
+        if hasattr(self, '_tree_nodes'):
+            delattr(self, '_tree_nodes')
+            
+    @on(Tree.NodeCollapsed)
+    def on_tree_node_collapsed(self, event: Tree.NodeCollapsed) -> None:
+        """Handle node collapse events."""
+        # Clear the nodes cache since the tree structure changed
+        if hasattr(self, '_tree_nodes'):
+            delattr(self, '_tree_nodes')
         
     async def on_key(self, event) -> None:
         """Handle key press events for the tree."""
@@ -439,18 +551,22 @@ class DirectoryTree(Tree):
         node = self._highlighted_node
         if not node:
             return
-            
-        # Handle space key for toggle expansion
-        if event.key == " ":
-            event.prevent_default()
-            # Toggle expansion for directories
-            if node.data.get("is_dir", False):
-                if node.is_expanded:
-                    await node.collapse()
-                else:
-                    await node.expand()
         
-        # Handle enter key for selection
-        elif event.key == "enter":
-            event.prevent_default()
-            self.toggle_selection(node)
+        try:    
+            # Handle space key for toggle selection (both files and directories)
+            if event.key == " ":
+                event.prevent_default()
+                # Toggle selection for all node types
+                self.toggle_selection(node)
+                
+                # Clear cached nodes to ensure we have the latest state
+                if hasattr(self, '_tree_nodes'):
+                    delattr(self, '_tree_nodes')
+            
+            # Handle enter key for selection ONLY (never expands/collapses)
+            elif event.key == "enter":
+                event.prevent_default()
+                # Toggle selection for the highlighted node (either file or directory)
+                self.toggle_selection(node)
+        except Exception as e:
+            self.log(f"Error handling key: {e} for {event.key}")

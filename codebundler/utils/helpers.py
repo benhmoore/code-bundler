@@ -98,4 +98,4 @@ def prompt_yes_no(question: str, default: bool = False) -> bool:
     return Confirm.ask(f"[prompt]{question}[/prompt]", default=default, console=console)
 
 
-# Old interactive setup has been removed in favor of the TUI
+# Utility functions for CLI and TUI interfaces
