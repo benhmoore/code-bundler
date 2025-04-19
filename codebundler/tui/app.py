@@ -112,12 +112,9 @@ class CodeBundlerApp(App):
         self.watch_path = Path(watch_path).resolve()
         self.output_file = output_file
         
-        # Auto-detect extension from output file if not provided
-        if extension is None:
-            output_ext = Path(output_file).suffix
-            self.extension = output_ext if output_ext else '.py'  # Default to .py if no extension
-        else:
-            self.extension = extension if extension.startswith('.') else f'.{extension}'
+        # We no longer filter by extension - all files can be selected
+        # Just keep this for backward compatibility
+        self.extension = None
         self.hide_patterns = hide_patterns or []
         self.select_patterns = select_patterns or []
         self.ignore_names = ignore_names or []
@@ -206,12 +203,14 @@ class CodeBundlerApp(App):
     def on_tree_node_highlighted(self, node):
         """Update status based on current node highlight."""
         if hasattr(node, 'data') and node.data:
+            path = node.data.get('path', '')
             if node.data.get("is_dir", False):
-                self.status_bar.update_status(f"Directory: {node.data.get('path', '')}")
-            elif node.data.get("selectable", False):
-                self.status_bar.update_status(f"File can be selected: {node.data.get('path', '')}", "green")
+                self.status_bar.update_status(f"Directory: {path}")
             else:
-                self.status_bar.update_status(f"File type not bundled: {node.data.get('path', '')} (not a {self.extension} file)", "yellow")
+                if node.data.get("selected", False):
+                    self.status_bar.update_status(f"Selected: {path}", "green")
+                else:
+                    self.status_bar.update_status(f"Click to select: {path}", "cyan")
 
     @on(DirectoryTree.FileSelected)
     def on_file_selected(self, event: DirectoryTree.FileSelected) -> None:

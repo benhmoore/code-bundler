@@ -14,7 +14,7 @@ def create_bundle(
     source_dir: str,
     output_file: str,
     file_paths: List[str],
-    extension: str,
+    extension: str = None,  # Not used for filtering anymore, just for comment style
     remove_comments: bool = False,
     remove_docstrings: bool = False,
 ) -> int:
@@ -32,7 +32,8 @@ def create_bundle(
     Returns:
         Number of files processed
     """
-    comment_prefix = get_comment_prefix(extension)
+    # Default comment prefix (used for the bundle header)
+    default_comment = "#"
     processed_count = 0
 
     # Create output directory if it doesn't exist
@@ -40,11 +41,15 @@ def create_bundle(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_file, "w", encoding="utf-8") as outfile:
-        outfile.write(f"{comment_prefix} Files combined from: {source_dir}\n\n")
+        outfile.write(f"{default_comment} Files combined from: {source_dir}\n\n")
 
         for abs_path in file_paths:
             # Convert to relative path for better readability in the output
             rel_path = os.path.relpath(abs_path, source_dir)
+            
+            # Detect file extension for this specific file
+            file_ext = Path(abs_path).suffix
+            file_comment_prefix = get_comment_prefix(file_ext)
             
             try:
                 with open(abs_path, "r", encoding="utf-8") as infile:
@@ -56,17 +61,18 @@ def create_bundle(
                 logger.warning(f"Error reading file {abs_path}: {e}")
                 continue
 
-            # Apply transformations if requested
-            lines = apply_transformations(
-                lines,
-                extension,
-                remove_comments=remove_comments,
-                remove_docstrings=remove_docstrings,
-            )
+            # Apply transformations if requested, using the file's own extension
+            if file_ext:  # Only transform files with extensions
+                lines = apply_transformations(
+                    lines,
+                    file_ext,
+                    remove_comments=remove_comments,
+                    remove_docstrings=remove_docstrings,
+                )
 
             # Add file header and footer
-            header = f"{comment_prefix} ==== BEGIN FILE: {rel_path} ====\n"
-            footer = f"\n{comment_prefix} ==== END FILE: {rel_path} ====\n\n"
+            header = f"{default_comment} ==== BEGIN FILE: {rel_path} ====\n"
+            footer = f"\n{default_comment} ==== END FILE: {rel_path} ====\n\n"
 
             outfile.write(header)
             outfile.writelines(lines)

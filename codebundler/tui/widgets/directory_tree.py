@@ -111,38 +111,32 @@ class DirectoryTree(Tree):
                 ):
                     continue
                     
-                # Include all files, but only track those with matching extension for selection
-                is_matching_file = is_dir or path.name.endswith(self.extension)
+                # Include all files for selection - no extension filtering
+                is_matching_file = True
                 
-                # Show all files, but mark only matching ones for potential selection
-                # We don't skip files anymore - we just display all of them
+                # Show all files and allow selection of any file type
                     
-                # Create the label with appropriate icon and style
+                # Create the label with appropriate icon
                 if is_dir:
                     icon = "📁 "
                     label = Text(f"{icon}{path.name}")
                 else:
                     icon = "📄 "
-                    # Style differently based on whether it's a file we care about for bundling
-                    if path.name.endswith(self.extension):
-                        label = Text(f"{icon}{path.name}")
-                    else:
-                        # Dim files that don't match our extension
-                        label = Text(f"{icon}{path.name}", style="dim")
+                    label = Text(f"{icon}{path.name}")
                 
-                # Create the node
+                # Create the node - all files are selectable now
                 node = parent.add(
                     label,
                     data={
                         "path": str(path), 
                         "is_dir": is_dir, 
                         "selected": False,
-                        "selectable": is_dir or path.name.endswith(self.extension)
+                        "selectable": True  # All files and directories are selectable
                     },
                 )
                 
-                # Store file nodes for later lookup - only track selectable files
-                if not is_dir and path.name.endswith(self.extension):
+                # Store file nodes for later lookup - track all files
+                if not is_dir:
                     self.file_nodes[str(path)] = node
                 
                 # Recursively populate directories
@@ -236,21 +230,22 @@ class DirectoryTree(Tree):
             is_dir = node.data.get("is_dir", False)
             is_selected = node.data.get("selected", False)
             
-            # Use more prominent selection indicators
-            if is_dir:
-                icon = "📁 " if not is_selected else "[green]📁 "
-            else:
-                icon = "📄 " if not is_selected else "[green]📄 "
-            
-            select_icon = "[green]✓ " if is_selected else ""
-            
-            label = Text(f"{select_icon}{icon}{path.name}")
             if is_selected:
-                label.stylize("bold green")
-            
-            # Add selection indicator at the end too for better visibility
-            if is_selected and not is_dir:
-                label.append(" [green]✓")
+                # Selected items get a checkmark and colored icon
+                if is_dir:
+                    label = Text("[green]✓ [/green][green]📁[/green] ")
+                else:
+                    label = Text("[green]✓ [/green][green]📄[/green] ")
+                # Add the name in bold green
+                label.append(Text(path.name, style="bold green"))
+            else:
+                # Unselected items just get a regular icon
+                if is_dir:
+                    label = Text("  📁 ")
+                else:
+                    label = Text("  📄 ")
+                # Add the name normally
+                label.append(path.name)
                 
             return label
         except Exception as e:
@@ -269,15 +264,15 @@ class DirectoryTree(Tree):
             return
             
         try:
-            # Check if this node is selectable
-            if not node.data.get("selectable", False):
-                # Non-selectable nodes don't respond to selection attempts
-                return
-                
+            # All nodes should be selectable now
             if node.data.get("is_dir", False):
                 # Toggle selection for all child files
                 is_selected = not self._any_child_selected(node)
                 self._select_node_children(node, is_selected)
+                
+                # Also mark the directory itself as selected/deselected for visual feedback
+                node.data["selected"] = is_selected
+                node.label = self._get_label_with_selection(node)
             else:
                 # Toggle selection for a single file
                 path = node.data.get("path", "")
