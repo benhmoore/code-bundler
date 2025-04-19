@@ -80,6 +80,11 @@ class CodeBundlerApp(App):
         ("n", "deselect_all", "Deselect All"),
     ]
 
+    # Define class variables to hold widget references
+    tree: DirectoryTree = None
+    bundle_status: Label = None
+    status_bar: "StatusBar" = None
+    
     def __init__(
         self,
         watch_path: str,
