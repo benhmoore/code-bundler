@@ -15,24 +15,24 @@ Here are the tasks involved in refactoring the `code-bundler` to use an interact
     -   [x] Update `--interactive` flag (marked as deprecated).
     -   [ ] Adapt `--export-tree` / `--use-tree` functionality in TUI.
 
--   [ ] **3. Create Main TUI Application (New Module/Files):**
-    -   [ ] Create a new module (e.g., `codebundler/tui/`).
-    -   [ ] Implement the main TUI application class (e.g., `tui/app.py`).
-    -   [ ] Initialize the app using parsed CLI arguments.
-    -   [ ] Set up the main TUI layout.
-    -   [ ] Manage TUI widgets (Tree, Status Bar).
-    -   [ ] Handle global key bindings.
-    -   [ ] Modify `cli/commands.py` `main()` to launch the TUI app.
+-   [x] **3. Create Main TUI Application (New Module/Files):**
+    -   [x] Create a new module (e.g., `codebundler/tui/`).
+    -   [x] Implement the main TUI application class (e.g., `tui/app.py`).
+    -   [x] Initialize the app using parsed CLI arguments.
+    -   [x] Set up the main TUI layout.
+    -   [x] Manage TUI widgets (Tree, Status Bar).
+    -   [x] Handle global key bindings.
+    -   [x] Modify `cli/commands.py` `main()` to launch the TUI app.
 
--   [ ] **4. Implement Interactive Directory Tree Widget (New Module/Files):**
-    -   [ ] Create a custom Tree widget (e.g., `tui/widgets/directory_tree.py`).
-    -   [ ] Implement directory scanning and population logic (respecting `--hide-patterns`).
-    -   [ ] Implement display logic (icons, styles, initial selection based on `--select-patterns`).
-    -   [ ] Implement selection state management (checked/unchecked).
-    -   [ ] Implement keyboard navigation (Up/Down/Left/Right/Enter).
-    -   [ ] Implement selection toggling (Spacebar, cascade selection for directories).
-    -   [ ] Implement subdirectory focusing ("zooming").
-    -   [ ] Implement methods for dynamic updates (add/remove/refresh nodes).
+-   [x] **4. Implement Interactive Directory Tree Widget (New Module/Files):**
+    -   [x] Create a custom Tree widget (e.g., `tui/widgets/directory_tree.py`).
+    -   [x] Implement directory scanning and population logic (respecting `--hide-patterns`).
+    -   [x] Implement display logic (icons, styles, initial selection based on `--select-patterns`).
+    -   [x] Implement selection state management (checked/unchecked).
+    -   [x] Implement keyboard navigation (Up/Down/Left/Right/Enter).
+    -   [x] Implement selection toggling (Spacebar, cascade selection for directories).
+    -   [x] Implement subdirectory focusing ("zooming").
+    -   [x] Implement methods for dynamic updates (add/remove/refresh nodes).
 
 -   [ ] **5. Integrate File System Watching (`codebundler/utils/watcher.py` & TUI App):**
     -   [ ] Modify `watchdog` integration to run in a separate thread managed by the TUI app.

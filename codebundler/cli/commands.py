@@ -307,95 +307,61 @@ def display_welcome_banner() -> None:
     console.print()
 
 
-def setup_watch_mode(parsed_args, filelist=None, use_tree=False):
+def setup_tui_mode(parsed_args):
     """
-    Set up file watching for automatic rebuilding.
+    Set up and launch the TUI (Text User Interface) for interactive file selection.
 
     Args:
         parsed_args: Command line arguments
-        filelist: List of files to watch (if using tree mode)
-        use_tree: Whether we're using a tree file
 
     Returns:
         Exit code
     """
     try:
-        # Import here to avoid dependency for users who don't need watch
+        # Check for required arguments
+        if not parsed_args.source_dir:
+            print_error("No source directory (--watch-path) provided.")
+            return 1
+        if not parsed_args.output_file:
+            print_error("No output file (--output) provided.")
+            return 1
+        if not parsed_args.ext:
+            print_error("No extension provided.")
+            return 1
+
+        # Import the TUI app
         try:
-            from codebundler.utils.watcher import watch_directory
-        except ImportError:
+            from codebundler.tui.app import CodeBundlerApp
+        except ImportError as e:
             print_error(
-                "Watching requires the 'watchdog' package. "
-                "Install with: pip install codebundler[watch] or pip install watchdog"
+                f"Error importing TUI modules: {e}\n"
+                "Make sure all dependencies are installed: pip install codebundler[tui]"
             )
             return 1
 
-        print_info("Watching for file changes. Press Ctrl+C to stop.")
-        console.print(
-            create_panel(
-                "Watch Mode",
-                f"[bold]Source Directory:[/bold] {parsed_args.source_dir}\n"
-                f"[bold]Output File:[/bold] {parsed_args.output_file}\n"
-                f"[bold]Press Ctrl+C to stop watching[/bold]",
-                "cyan",
-            )
-        )
-
-        # Define a callback function for rebuilding
-        def rebuild(changed_file):
-            console.print(
-                f"[cyan]Rebuilding after change to: [bold]{changed_file}[/bold][/cyan]"
-            )
-            try:
-                if use_tree:
-                    combine_from_filelist(
-                        source_dir=parsed_args.source_dir,
-                        output_file=parsed_args.output_file,
-                        extension=parsed_args.ext,
-                        filelist=filelist,
-                        remove_comments=bool(parsed_args.strip_comments),
-                        remove_docstrings=bool(parsed_args.remove_docstrings),
-                    )
-                else:
-                    combine_source_files(
-                        source_dir=parsed_args.source_dir,
-                        output_file=parsed_args.output_file,
-                        extension=parsed_args.ext,
-                        ignore_names=parsed_args.ignore_names,
-                        ignore_paths=parsed_args.ignore_paths,
-                        include_names=parsed_args.include_names,
-                        remove_comments=bool(parsed_args.strip_comments),
-                        remove_docstrings=bool(parsed_args.remove_docstrings),
-                    )
-                console.print("[green]Rebuild complete[/green]")
-            except Exception as e:
-                print_error(f"Error during rebuild: {e}")
-
-        # Set up the observer
-        observer = watch_directory(
-            source_dir=parsed_args.source_dir,
+        print_info("Launching TUI mode...")
+        
+        # Start the TUI application
+        app = CodeBundlerApp(
+            watch_path=parsed_args.source_dir,
+            output_file=parsed_args.output_file,
             extension=parsed_args.ext,
+            hide_patterns=parsed_args.hide_patterns,
+            select_patterns=parsed_args.select_patterns,
             ignore_names=parsed_args.ignore_names,
             ignore_paths=parsed_args.ignore_paths,
             include_names=parsed_args.include_names,
-            filelist=filelist,
-            use_tree=use_tree,
-            callback=rebuild,
+            strip_comments=bool(parsed_args.strip_comments),
+            remove_docstrings=bool(parsed_args.remove_docstrings),
+            confirm_selection=parsed_args.confirm_selection,
         )
-
-        try:
-            # Keep the main thread running
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            console.print("\n[cyan]Stopping watch mode...[/cyan]")
-            observer.stop()
-        observer.join()
-
+        
+        app.run()
         return 0
 
     except Exception as e:
-        print_error(f"Error setting up watch mode: {e}")
+        print_error(f"Error setting up TUI mode: {e}")
+        logger.error("Detailed error:", exc_info=True)
         return 1
 
 
@@ -627,11 +593,9 @@ def main(args: Optional[List[str]] = None) -> int:
                     ],
                 )
 
-                # If watch mode is enabled, set up the watcher
+                # If watch mode is enabled, use the TUI
                 if parsed_args.watch:
-                    return setup_watch_mode(
-                        parsed_args, filelist=filelist, use_tree=True
-                    )
+                    return setup_tui_mode(parsed_args)
 
                 return 0
             except Exception as e:
@@ -704,9 +668,9 @@ def main(args: Optional[List[str]] = None) -> int:
                 ],
             )
 
-            # If watch mode is enabled, set up the watcher
+            # If watch mode is enabled, use the TUI
             if parsed_args.watch:
-                return setup_watch_mode(parsed_args, filelist=None, use_tree=False)
+                return setup_tui_mode(parsed_args)
 
             return 0
         except Exception as e:
