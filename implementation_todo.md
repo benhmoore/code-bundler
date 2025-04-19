@@ -12,8 +12,8 @@ Here are the tasks involved in refactoring the `code-bundler` to use an interact
     -   [x] Replace positional `source_dir`, `output_file` with flags (`--watch-path`, `--output`).
     -   [x] Add new flags: `--hide-patterns`, `--select-patterns`, `--confirm-selection`.
     -   [x] Modify `--watch` flag behaviour to launch the TUI.
-    -   [x] Update `--interactive` flag (marked as deprecated).
-    -   [ ] Adapt `--export-tree` / `--use-tree` functionality in TUI.
+    -   [x] Update `--interactive` flag to be an alias for `--watch`.
+    -   [x] Remove `--export-tree` / `--use-tree` functionality in favor of the TUI.
 
 -   [x] **3. Create Main TUI Application (New Module/Files):**
     -   [x] Create a new module (e.g., `codebundler/tui/`).
