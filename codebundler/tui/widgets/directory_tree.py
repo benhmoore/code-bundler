@@ -47,23 +47,34 @@ class DirectoryTree(Tree):
             select_patterns: Glob patterns for initial file selection
             **kwargs: Additional arguments for the Tree widget
         """
-        super().__init__(label=directory.name, **kwargs)
+        # Initialize the tree with the root directory as the label
+        super().__init__(str(directory.name), **kwargs)
+        
+        # Store configuration
         self.root_directory = directory
         self.extension = extension
         self.hide_patterns = hide_patterns or []
         self.select_patterns = select_patterns or []
         self.selected_files: Set[str] = set()
         self.file_nodes: Dict[str, TreeNode] = {}
-        # Initialize tracker for key press handling
+        
+        # Initialize trackers for key press handling
         self._last_key_press = None
         self._highlighted_node = None
+
+    def on_mount(self) -> None:
+        """Initialize the tree after the widget is mounted."""
+        # Create the root node
+        root_node = self.root.add(
+            str(self.root_directory.name), 
+            data={"path": str(self.root_directory), "is_dir": True, "selected": False}
+        )
         
-        # Set up initial tree (needs to be done before expanding)
-        self.root.data = {"path": str(directory), "is_dir": True, "selected": False}
-        self.populate_tree(self.root, directory)
+        # Populate the tree
+        self.populate_tree(root_node, self.root_directory)
         
-        # Expand after population
-        self.root.expand()
+        # Expand the root node
+        root_node.expand()
 
     def populate_tree(self, parent: TreeNode, directory: Path) -> None:
         """Recursively populate the tree with nodes for files and directories.
@@ -89,11 +100,11 @@ class DirectoryTree(Tree):
                     continue
                 
                 is_dir = path.is_dir()
-                rel_path = path.relative_to(self.root_directory)
+                rel_path = str(path.relative_to(self.root_directory))
                 
                 # Skip directories that match hide patterns
                 if is_dir and any(
-                    fnmatch.fnmatch(str(rel_path) + "/", pattern) 
+                    fnmatch.fnmatch(f"{rel_path}/", pattern) 
                     for pattern in self.hide_patterns
                 ):
                     continue
@@ -147,13 +158,23 @@ class DirectoryTree(Tree):
         # Save the current selection and expansion state
         selected_files = self.selected_files.copy()
         expanded_nodes = {node.data["path"] for node in self.walk_tree() 
-                          if node.is_expanded and node.data.get("is_dir", False)}
+                          if hasattr(node, "is_expanded") and 
+                          node.is_expanded and 
+                          node.data.get("is_dir", False)}
         
         # Clear and rebuild the tree
         self.root.remove_children()
         self.file_nodes.clear()
         self.selected_files.clear()
-        self.populate_tree(self.root, self.root_directory)
+        
+        # Recreate the root node
+        root_node = self.root.add(
+            str(self.root_directory.name), 
+            data={"path": str(self.root_directory), "is_dir": True, "selected": False}
+        )
+        
+        # Repopulate
+        self.populate_tree(root_node, self.root_directory)
         
         # Restore selection state
         for file_path in selected_files:
@@ -165,7 +186,9 @@ class DirectoryTree(Tree):
         
         # Restore expansion state
         for node in self.walk_tree():
-            if node.data.get("is_dir", False) and node.data["path"] in expanded_nodes:
+            if (node.data.get("is_dir", False) and 
+                node.data["path"] in expanded_nodes and
+                hasattr(node, "expand")):
                 node.expand()
         
         # Notify about selection
@@ -174,13 +197,15 @@ class DirectoryTree(Tree):
     def walk_tree(self):
         """Walk through all nodes in the tree."""
         yield self.root
-        yield from self._walk_node(self.root)
+        if hasattr(self.root, "children"):
+            yield from self._walk_node(self.root)
         
     def _walk_node(self, node):
         """Recursively walk through a node's children."""
-        for child in node.children:
-            yield child
-            yield from self._walk_node(child)
+        if hasattr(node, "children"):
+            for child in node.children:
+                yield child
+                yield from self._walk_node(child)
 
     def _get_label_with_selection(self, node: TreeNode) -> Text:
         """Get the node label with selection indicator."""
@@ -252,13 +277,14 @@ class DirectoryTree(Tree):
         """
         if not node.data.get("is_dir", False):
             return node.data.get("selected", False)
-            
-        for child in node.children:
-            if child.data.get("is_dir", False):
-                if self._any_child_selected(child):
+        
+        if hasattr(node, "children"):
+            for child in node.children:
+                if child.data.get("is_dir", False):
+                    if self._any_child_selected(child):
+                        return True
+                elif child.data.get("selected", False):
                     return True
-            elif child.data.get("selected", False):
-                return True
                 
         return False
 
@@ -269,20 +295,21 @@ class DirectoryTree(Tree):
             node: The parent node
             select: Whether to select (True) or deselect (False)
         """
-        for child in node.children:
-            if child.data.get("is_dir", False):
-                self._select_node_children(child, select)
-            else:
-                path = child.data["path"]
-                child.data["selected"] = select
-                
-                if select:
-                    self.selected_files.add(path)
+        if hasattr(node, "children"):
+            for child in node.children:
+                if child.data.get("is_dir", False):
+                    self._select_node_children(child, select)
                 else:
-                    self.selected_files.discard(path)
-                
-                # Update node label
-                child.label = self._get_label_with_selection(child)
+                    path = child.data["path"]
+                    child.data["selected"] = select
+                    
+                    if select:
+                        self.selected_files.add(path)
+                    else:
+                        self.selected_files.discard(path)
+                    
+                    # Update node label
+                    child.label = self._get_label_with_selection(child)
 
     @on(Tree.NodeSelected)
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
