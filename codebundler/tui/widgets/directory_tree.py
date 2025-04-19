@@ -396,17 +396,35 @@ class DirectoryTree(Tree):
             except Exception as e:
                 self.log(f"Error selecting child node: {e}")
 
-    @on(Tree.NodeSelected)
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        """Handle node selection events - automatically toggle node when clicked."""
+    # Override the default click behavior
+    async def on_click(self, event) -> None:
+        """Handle click events on the tree - use click for selection not expansion."""
+        # Get the node that was clicked
+        hit_info = self.get_node_at(event.x, event.y)
+        if hit_info is None:
+            return
+            
+        node, _ = hit_info
+        if node is None:
+            return
+            
         try:
-            node = event.node
             # Only toggle if the node has data
             if hasattr(node, 'data') and node.data is not None:
-                # Always toggle selection when a node is selected (clicked)
+                # Toggle selection when a node is clicked
                 self.toggle_selection(node)
+                # Also set focus to this node
+                self.select_node(node)
         except Exception as e:
-            self.log(f"Error handling node selection: {e}")
+            self.log(f"Error handling click: {e}")
+            
+    # Keep this for handling keyboard selection
+    @on(Tree.NodeSelected)
+    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        """Handle node selection events from keyboard navigation."""
+        # This event will still happen from keyboard navigation
+        # We don't toggle selection here since Enter now does that 
+        self._highlighted_node = event.node
         
     @on(Tree.NodeHighlighted)
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
@@ -417,7 +435,22 @@ class DirectoryTree(Tree):
         """Handle key press events for the tree."""
         self._last_key_press = event.key
         
-        # Handle space key for selection toggling
-        if event.key == " " and self._highlighted_node:
+        # Capture the currently highlighted node
+        node = self._highlighted_node
+        if not node:
+            return
+            
+        # Handle space key for toggle expansion
+        if event.key == " ":
             event.prevent_default()
-            self.toggle_selection(self._highlighted_node)
+            # Toggle expansion for directories
+            if node.data.get("is_dir", False):
+                if node.is_expanded:
+                    await node.collapse()
+                else:
+                    await node.expand()
+        
+        # Handle enter key for selection
+        elif event.key == "enter":
+            event.prevent_default()
+            self.toggle_selection(node)

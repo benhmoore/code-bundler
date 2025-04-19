@@ -23,8 +23,8 @@ class StatusBar(Static):
 
     def __init__(self) -> None:
         """Initialize the status bar with default message."""
-        super().__init__("Ready - Click on files to select them or press Space to toggle selection")
-        self.status = "Ready - Click on files to select them or press Space to toggle selection"
+        super().__init__("Ready - Click/Enter to select; Space to expand/collapse directories")
+        self.status = "Ready - Click/Enter to select; Space to expand/collapse directories"
 
     def update_status(self, message: str, style: str = "white") -> None:
         """Update the status message with optional styling."""
@@ -85,7 +85,8 @@ class CodeBundlerApp(App):
         ("r", "rebuild", "Rebuild"),
         ("a", "select_all", "Select All"),
         ("n", "deselect_all", "Deselect All"),
-        ("space", "toggle_selection", "Toggle Selection"),
+        ("enter", "toggle_selection", "Toggle Selection"),
+        ("space", "toggle_expansion", "Toggle Expansion"),
     ]
 
     # Define class variables to hold widget references
@@ -288,6 +289,15 @@ class CodeBundlerApp(App):
         """Toggle selection of the currently highlighted node."""
         if self.tree._highlighted_node:
             self.tree.toggle_selection(self.tree._highlighted_node)
+            
+    async def action_toggle_expansion(self) -> None:
+        """Toggle expansion of the currently highlighted directory."""
+        node = self.tree._highlighted_node
+        if node and hasattr(node, 'data') and node.data.get("is_dir", False):
+            if node.is_expanded:
+                await node.collapse()
+            else:
+                await node.expand()
 
     def on_unmount(self) -> None:
         """Clean up when the application exits."""
