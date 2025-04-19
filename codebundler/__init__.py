@@ -8,12 +8,11 @@ except Exception:
     __version__ = "unknown"
 
 # Public API
-from codebundler.core.combiner import combine_from_filelist, combine_source_files
 from codebundler.core.transformers import apply_transformations, get_comment_prefix
+from codebundler.tui.bundler import create_bundle
 
 __all__ = [
-    "combine_from_filelist",
-    "combine_source_files",
+    "create_bundle",
     "apply_transformations",
     "get_comment_prefix",
 ]

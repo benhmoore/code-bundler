@@ -113,8 +113,7 @@ class CodeBundlerApp(App):
         self.watch_path = Path(watch_path).resolve()
         self.output_file = output_file
         
-        # We no longer filter by extension - all files can be selected
-        # Just keep this for backward compatibility
+        # We don't filter by extension in the TUI
         self.extension = None
         self.hide_patterns = hide_patterns or []
         self.select_patterns = select_patterns or []

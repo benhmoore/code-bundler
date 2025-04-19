@@ -24,8 +24,6 @@ class CodeBundlerHandler(FileSystemEventHandler):
         ignore_names: List[str] = None,
         ignore_paths: List[str] = None,
         include_names: List[str] = None,
-        filelist: List[str] = None,
-        use_tree: bool = False,
         callback: Callable[[str], None] = None,
     ):
         """Initialize the handler with filters and callback."""
@@ -34,9 +32,7 @@ class CodeBundlerHandler(FileSystemEventHandler):
         self.ignore_names = ignore_names or []
         self.ignore_paths = ignore_paths or []
         self.include_names = include_names or []
-        # No more legacy tree-based selection
-        self.filelist = None
-        self.use_tree = False
+        # No tree-based selection parameters needed
         self.callback = callback
         self.last_run = 0
         self.debounce_time = 0.5  # seconds
@@ -61,7 +57,7 @@ class CodeBundlerHandler(FileSystemEventHandler):
         if not should_include(filename, self.include_names):
             return
 
-        # No more tree mode
+        # Apply TUI-specific selection logic
 
         # Debounce to prevent multiple rapid rebuilds
         current_time = time.time()
