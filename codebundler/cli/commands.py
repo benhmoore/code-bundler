@@ -243,7 +243,7 @@ def setup_tui_mode(parsed_args):
         except ImportError as e:
             print_error(
                 f"Error importing TUI modules: {e}\n"
-                "Make sure all dependencies are installed: pip install codebundler[tui]"
+                "Make sure all dependencies are installed: pip install -e ."
             )
             return 1
 

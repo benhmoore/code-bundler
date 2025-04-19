@@ -1,26 +1,21 @@
 # Code Bundler
 
-A tool for combining and transforming source code files for large language model (LLM) usage.
+A text-based UI (TUI) tool for combining and transforming source code files for large language model (LLM) usage.
 
 ## Overview
 
 Code Bundler helps developers package multiple source code files into a single consolidated file for sharing with LLMs like Claude, ChatGPT, or other AI assistants. It features:
 
-- Interactive TUI (Text User Interface) for file selection
-- Support for multiple file types
+- Interactive TUI (Text User Interface) for intuitive file selection
+- Support for any file type with customizable selection patterns
 - Source code transformations (comment and docstring removal)
 - Real-time file monitoring and automatic rebuilding
+- Clipboard integration for easy sharing with LLMs
 
 ## Installation
 
 ```bash
 pip install codebundler
-```
-
-For the full experience with the TUI interface:
-
-```bash
-pip install "codebundler[tui]"
 ```
 
 ## Usage
@@ -41,18 +36,26 @@ codebundler /path/to/source/directory output.txt
 - `-v, --verbose`: Increase output verbosity (can be used multiple times)
 - `-q, --quiet`: Suppress non-error output
 
-## TUI Controls
+## Keyboard Controls
 
-- **Enter**: Toggle file selection
-- **Space**: Expand/collapse directories
-- **a**: Select all matching files
-- **n**: Deselect all files
-- **r**: Rebuild bundle
-- **q**: Quit
+| Key | Action |
+|-----|--------|
+| Space/Enter | Toggle selection of current node |
+| a | Select all files |
+| n | Deselect all files |
+| r | Rebuild the bundle |
+| c | Copy bundle to clipboard |
+| h | Show/hide help screen |
+| q | Quit the application |
+
+## Mouse Controls
+
+- **Click directories**: Expand/collapse directories
+- **Click files**: Toggle file selection
 
 ## Examples
 
-**Basic Usage (with TUI)**:
+**Basic Usage**:
 ```bash
 codebundler ./my-project output.txt
 ```
@@ -69,10 +72,14 @@ codebundler ./my-project output.txt --ignore="node_modules,__pycache__" --strip-
 
 ## Features
 
-- **File Selection**: Interactively select files for bundling with a keyboard-driven interface
-- **Transformation**: Optionally remove comments and docstrings for more concise outputs
-- **Watching**: Automatically rebuild the bundle when selected files change
+- **Interactive File Selection**: Select files with keyboard or mouse
+- **Empty Directory Support**: Select/deselect empty directories
+- **Multi-select**: Select multiple files across the project 
+- **Transformation**: Optionally remove comments and docstrings
+- **Live Monitoring**: Automatically rebuild when selected files change
+- **Clipboard Integration**: Copy output directly to clipboard
 - **Format Awareness**: Maintains correct comment prefixes based on file extensions
+- **In-app Help**: Press 'h' to view all keyboard shortcuts
 
 ## Contributing
 

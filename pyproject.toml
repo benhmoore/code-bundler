@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "codebundler"
 version = "0.1.2"
-description = "Combine and transform source code files for LLM usage"
+description = "TUI application to combine and transform source code files for LLM usage"
 readme = "README.md"
 authors = [
     {name = "Ben Moore"}
@@ -28,8 +28,9 @@ keywords = ["code", "source code", "llm", "combine", "transform"]
 requires-python = ">=3.8"
 dependencies = [
     "rich>=10.0.0",
-    "watchdog>=2.1.0",
-    "textual>=0.43.1"
+    "watchdog>=2.1.0", 
+    "textual>=0.30.0,<4.0.0",
+    "pyperclip>=1.8.0"
 ]
 
 [project.optional-dependencies]

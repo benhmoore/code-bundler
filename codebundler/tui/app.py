@@ -8,8 +8,9 @@ from typing import List, Optional, Set
 from rich.text import Text
 from textual import on, work
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Footer, Header, Label, Static, Tree
+from textual.containers import Container, Horizontal, Vertical, Grid
+from textual.widgets import Footer, Header, Label, Static, Tree, Button
+from textual.screen import ModalScreen
 
 from codebundler.tui.bundler import create_bundle
 from codebundler.tui.widgets.directory_tree import DirectoryTree
@@ -18,13 +19,113 @@ from codebundler.utils.watcher import watch_directory
 logger = logging.getLogger(__name__)
 
 
+class HelpScreen(ModalScreen):
+    """Help screen modal that displays all available keyboard shortcuts."""
+    
+    CSS = """
+    #help-container {
+        width: 60%;
+        height: 70%;
+        background: $surface;
+        border: solid $primary;
+        padding: 1 2;
+    }
+    
+    #help-title {
+        text-align: center;
+        background: $boost;
+        padding: 1;
+        width: 100%;
+        color: $text;
+        font-weight: bold;
+        margin-bottom: 1;
+    }
+    
+    .shortcut-grid {
+        height: auto;
+        margin-top: 1;
+        grid-size: 2;
+        grid-gutter: 1 2;
+        grid-rows: auto;
+    }
+    
+    .key {
+        background: $boost;
+        color: $text-muted;
+        padding: 0 1;
+        text-align: center;
+        border: solid $primary-darken-3;
+    }
+    
+    .description {
+        padding-left: 1;
+        color: $text;
+    }
+    
+    #close-button-row {
+        align: center middle;
+        height: auto;
+        margin-top: 2;
+    }
+    
+    #close-button {
+        width: 30%;
+    }
+    """
+    
+    def compose(self) -> ComposeResult:
+        """Compose the help screen content."""
+        with Container(id="help-container"):
+            yield Label("CodeBundler Keyboard Shortcuts", id="help-title")
+            
+            with Grid(classes="shortcut-grid"):
+                # Define shortcut rows with key and description
+                shortcuts = [
+                    ("Enter", "Toggle selection of current node"),
+                    ("Space", "Toggle selection of current node"),
+                    ("a", "Select all files"),
+                    ("n", "Deselect all files"),
+                    ("r", "Rebuild the bundle"),
+                    ("c", "Copy bundle to clipboard"),
+                    ("h", "Show/hide this help screen"),
+                    ("q", "Quit the application"),
+                ]
+                
+                # Add CSS grid classes
+                yield Static("Key", classes="key")
+                yield Static("Description", classes="description")
+                
+                # Add all shortcuts to the grid
+                for key, description in shortcuts:
+                    yield Static(key, classes="key")
+                    yield Static(description, classes="description")
+            
+            # Additional usage information
+            yield Static("\nMouse Controls:", classes="section-title")
+            yield Static("• Click directories to expand/collapse")
+            yield Static("• Click files to toggle selection")
+            
+            with Horizontal(id="close-button-row"):
+                yield Button("Close (Esc)", id="close-button", variant="primary")
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button press events."""
+        if event.button.id == "close-button":
+            self.dismiss()
+    
+    def on_key(self, event) -> None:
+        """Handle key press events."""
+        if event.key == "escape":
+            self.dismiss()
+
+
 class StatusBar(Static):
     """Status bar widget to display current status and messages."""
 
     def __init__(self) -> None:
         """Initialize the status bar with default message."""
-        super().__init__("Ready - Click/Enter to select; Space to expand/collapse directories")
-        self.status = "Ready - Click/Enter to select; Space to expand/collapse directories"
+        super().__init__("Ready - Press 'h' for help")
+        self.status = "Ready - Press 'h' for help"
 
     def update_status(self, message: str, style: str = "white") -> None:
         """Update the status message with optional styling."""
@@ -85,8 +186,10 @@ class CodeBundlerApp(App):
         ("r", "rebuild", "Rebuild"),
         ("a", "select_all", "Select All"),
         ("n", "deselect_all", "Deselect All"),
+        ("c", "copy_to_clipboard", "Copy to Clipboard"),
+        ("h", "toggle_help", "Show/Hide Help"),
         ("enter", "toggle_selection", "Toggle Selection"),
-        ("space", "toggle_expansion", "Toggle Expansion"),
+        ("space", "toggle_selection", "Toggle Selection"),
     ]
 
     # Define class variables to hold widget references
@@ -285,18 +388,75 @@ class CodeBundlerApp(App):
         self.tree.deselect_all_files()
         
     def action_toggle_selection(self) -> None:
-        """Toggle selection of the currently highlighted node."""
+        """Toggle selection of the currently highlighted node (triggered by Space or Enter keys)."""
         if self.tree._highlighted_node:
             self.tree.toggle_selection(self.tree._highlighted_node)
             
-    async def action_toggle_expansion(self) -> None:
-        """Toggle expansion of the currently highlighted directory."""
-        node = self.tree._highlighted_node
-        if node and hasattr(node, 'data') and node.data.get("is_dir", False):
-            if node.is_expanded:
-                await node.collapse()
-            else:
-                await node.expand()
+    def action_copy_to_clipboard(self) -> None:
+        """Copy the bundled content to the clipboard."""
+        try:
+            if not os.path.exists(self.output_file):
+                self.status_bar.update_status("No bundle file found. Build first with 'r'", "yellow")
+                return
+
+            # First rebuild to ensure we have the latest content
+            self.rebuild_bundle()
+                
+            # Read the file content
+            with open(self.output_file, "r", encoding="utf-8") as f:
+                content = f.read()
+                
+            # Copy to clipboard using pyperclip or OS command
+            try:
+                import pyperclip
+                pyperclip.copy(content)
+                self.status_bar.update_status(f"Copied {len(content)} characters to clipboard", "green")
+            except ImportError:
+                # Fall back to OS-specific commands if pyperclip is not available
+                import platform
+                import subprocess
+                
+                system = platform.system()
+                if system == "Darwin":  # macOS
+                    process = subprocess.Popen(
+                        ["pbcopy"], stdin=subprocess.PIPE, text=True
+                    )
+                    process.communicate(input=content)
+                    self.status_bar.update_status(f"Copied {len(content)} characters to clipboard", "green")
+                elif system == "Windows":
+                    process = subprocess.Popen(
+                        ["clip"], stdin=subprocess.PIPE, text=True
+                    )
+                    process.communicate(input=content)
+                    self.status_bar.update_status(f"Copied {len(content)} characters to clipboard", "green")
+                elif system == "Linux":
+                    try:
+                        # Try xclip first
+                        process = subprocess.Popen(
+                            ["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, text=True
+                        )
+                        process.communicate(input=content)
+                        self.status_bar.update_status(f"Copied {len(content)} characters to clipboard", "green")
+                    except FileNotFoundError:
+                        try:
+                            # Try xsel if xclip is not available
+                            process = subprocess.Popen(
+                                ["xsel", "--clipboard", "--input"], stdin=subprocess.PIPE, text=True
+                            )
+                            process.communicate(input=content)
+                            self.status_bar.update_status(f"Copied {len(content)} characters to clipboard", "green")
+                        except FileNotFoundError:
+                            self.status_bar.update_status("Clipboard copy failed. Install pyperclip, xclip, or xsel.", "red")
+                else:
+                    self.status_bar.update_status(f"Clipboard not supported on {system}", "red")
+                
+        except Exception as e:
+            self.status_bar.update_status(f"Error copying to clipboard: {e}", "red")
+            logger.error(f"Error copying to clipboard: {e}")
+            
+    def action_toggle_help(self) -> None:
+        """Toggle the help screen."""
+        self.push_screen(HelpScreen())
 
     def on_unmount(self) -> None:
         """Clean up when the application exits."""
