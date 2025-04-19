@@ -120,19 +120,23 @@ def setup_parser() -> argparse.ArgumentParser:
     tui_group.add_argument(
         "--ignore",
         dest="hide_patterns",
-        nargs="*",
-        metavar="PATTERN",
-        default=[],
-        help="Patterns to ignore in tree view (e.g., '__pycache__' '*.meta')",
+        type=str,
+        nargs='?',
+        const="__pycache__,*.meta",  # Default if flag is provided without argument
+        default="",                  # Default if flag is not provided
+        metavar="PATTERNS",
+        help="Comma-separated patterns to ignore in tree view (e.g., --ignore='__pycache__,*.meta')",
     )
     
     tui_group.add_argument(
         "--select",
         dest="select_patterns",
-        nargs="*",
-        metavar="PATTERN",
-        default=[],
-        help="Glob patterns for initial file selection (e.g., '*.py' 'docs/*.md')",
+        type=str,
+        nargs='?',
+        const="*.py",  # Default if flag is provided without argument
+        default="",    # Default if flag is not provided
+        metavar="PATTERNS",
+        help="Comma-separated glob patterns (must be quoted) for file selection (e.g., --select='*.py,*.md')",
     )
     
     tui_group.add_argument(
@@ -351,7 +355,13 @@ def main(args: Optional[List[str]] = None) -> int:
         # Tree functionality has been removed in favor of the TUI
 
         # TUI is now the only interface
-        # select_patterns is already a list from nargs="*"
+        # Parse comma-separated patterns into lists
+        if parsed_args.select_patterns and isinstance(parsed_args.select_patterns, str):
+            parsed_args.select_patterns = [p.strip() for p in parsed_args.select_patterns.split(',') if p.strip()]
+            
+        if parsed_args.hide_patterns and isinstance(parsed_args.hide_patterns, str):
+            parsed_args.hide_patterns = [p.strip() for p in parsed_args.hide_patterns.split(',') if p.strip()]
+            
         return setup_tui_mode(parsed_args)
 
         # End of main function - TUI is the only mode
