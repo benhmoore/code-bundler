@@ -10,6 +10,7 @@ from typing import List, Optional
 from rich.table import Table
 
 from codebundler import __version__
+
 # Import utility functions
 from codebundler.utils.helpers import (
     console,
@@ -113,29 +114,29 @@ def setup_parser() -> argparse.ArgumentParser:
     )
 
     # Configure TUI specific options
-    
+
     tui_group.add_argument(
         "--ignore",
         dest="hide_patterns",
         type=str,
-        nargs='?',
+        nargs="?",
         const="__pycache__,*.meta",  # Default if flag is provided without argument
-        default="",                  # Default if flag is not provided
+        default="",  # Default if flag is not provided
         metavar="PATTERNS",
         help="Comma-separated patterns to ignore in tree view (e.g., --ignore='__pycache__,*.meta')",
     )
-    
+
     tui_group.add_argument(
         "--select",
         dest="select_patterns",
         type=str,
-        nargs='?',
+        nargs="?",
         const="*.py",  # Default if flag is provided without argument
-        default="",    # Default if flag is not provided
+        default="",  # Default if flag is not provided
         metavar="PATTERNS",
         help="Comma-separated glob patterns (must be quoted) for file selection (e.g., --select='*.py,*.md')",
     )
-    
+
     tui_group.add_argument(
         "-y",
         "--yes",
@@ -143,19 +144,14 @@ def setup_parser() -> argparse.ArgumentParser:
         dest="confirm_selection",
         help="Auto-confirm directory tree and begin watching immediately",
     )
-    
 
-    # Required arguments 
+    # Required arguments
     basic_group.add_argument(
-        "source_dir", 
-        metavar="DIRECTORY",
-        help="Directory to search/watch (required)"
+        "source_dir", metavar="DIRECTORY", help="Directory to search/watch (required)"
     )
 
     basic_group.add_argument(
-        "output_file", 
-        metavar="OUTPUT",
-        help="Output file path (required)"
+        "output_file", metavar="OUTPUT", help="Output file path (required)"
     )
 
     # Legacy filtering options - moved to TUI selection
@@ -197,7 +193,6 @@ def setup_parser() -> argparse.ArgumentParser:
     basic_group.add_argument(
         "--quiet", "-q", action="store_true", help="Suppress non-error output."
     )
-
 
     # We want None as default so we can detect if user explicitly set these flags
     parser.set_defaults(strip_comments=None, remove_docstrings=None)
@@ -248,7 +243,7 @@ def setup_tui_mode(parsed_args):
             return 1
 
         print_info("Launching TUI mode...")
-        
+
         # Start the TUI application
         app = CodeBundlerApp(
             watch_path=parsed_args.source_dir,
@@ -263,7 +258,7 @@ def setup_tui_mode(parsed_args):
             remove_docstrings=bool(parsed_args.remove_docstrings),
             confirm_selection=parsed_args.confirm_selection,
         )
-        
+
         app.run()
         return 0
 
@@ -298,13 +293,16 @@ def main(args: Optional[List[str]] = None) -> int:
         # Launch TUI interface
         # Parse comma-separated patterns into lists
         if parsed_args.select_patterns and isinstance(parsed_args.select_patterns, str):
-            parsed_args.select_patterns = [p.strip() for p in parsed_args.select_patterns.split(',') if p.strip()]
-            
-        if parsed_args.hide_patterns and isinstance(parsed_args.hide_patterns, str):
-            parsed_args.hide_patterns = [p.strip() for p in parsed_args.hide_patterns.split(',') if p.strip()]
-            
-        return setup_tui_mode(parsed_args)
+            parsed_args.select_patterns = [
+                p.strip() for p in parsed_args.select_patterns.split(",") if p.strip()
+            ]
 
+        if parsed_args.hide_patterns and isinstance(parsed_args.hide_patterns, str):
+            parsed_args.hide_patterns = [
+                p.strip() for p in parsed_args.hide_patterns.split(",") if p.strip()
+            ]
+
+        return setup_tui_mode(parsed_args)
 
     except KeyboardInterrupt:
         console.print("\n[bold red]Operation canceled by user.[/bold red]")
