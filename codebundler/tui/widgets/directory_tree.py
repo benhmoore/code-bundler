@@ -214,27 +214,35 @@ class DirectoryTree(Tree):
 
     def _get_label_with_selection(self, node: TreeNode) -> Text:
         """Get the node label with selection indicator."""
-        path = Path(node.data["path"])
-        is_dir = node.data["is_dir"]
-        is_selected = node.data["selected"]
-        
-        # Use more prominent selection indicators
-        if is_dir:
-            icon = "📁 " if not is_selected else "[green]📁 "
-        else:
-            icon = "📄 " if not is_selected else "[green]📄 "
-        
-        select_icon = "[green]✓ " if is_selected else ""
-        
-        label = Text(f"{select_icon}{icon}{path.name}")
-        if is_selected:
-            label.stylize("bold green")
-        
-        # Add selection indicator at the end too for better visibility
-        if is_selected and not is_dir:
-            label.append(" [green]✓")
+        if not hasattr(node, 'data') or node.data is None:
+            # For nodes without data, just return the original label
+            return node.label if hasattr(node, 'label') else Text(str(node))
             
-        return label
+        try:
+            path = Path(node.data.get("path", "unknown"))
+            is_dir = node.data.get("is_dir", False)
+            is_selected = node.data.get("selected", False)
+            
+            # Use more prominent selection indicators
+            if is_dir:
+                icon = "📁 " if not is_selected else "[green]📁 "
+            else:
+                icon = "📄 " if not is_selected else "[green]📄 "
+            
+            select_icon = "[green]✓ " if is_selected else ""
+            
+            label = Text(f"{select_icon}{icon}{path.name}")
+            if is_selected:
+                label.stylize("bold green")
+            
+            # Add selection indicator at the end too for better visibility
+            if is_selected and not is_dir:
+                label.append(" [green]✓")
+                
+            return label
+        except Exception as e:
+            self.log(f"Error creating label: {e}")
+            return Text(str(node))
 
     def toggle_selection(self, node: TreeNode) -> None:
         """Toggle selection state for a node.
@@ -242,26 +250,38 @@ class DirectoryTree(Tree):
         Args:
             node: The node to toggle
         """
-        if node.data.get("is_dir", False):
-            # Toggle selection for all child files
-            is_selected = not self._any_child_selected(node)
-            self._select_node_children(node, is_selected)
-        else:
-            # Toggle selection for a single file
-            path = node.data["path"]
-            is_selected = not node.data.get("selected", False)
-            node.data["selected"] = is_selected
+        # Check if the node has data
+        if not hasattr(node, 'data') or node.data is None:
+            self.log(f"No data found for node: {node}")
+            return
             
-            if is_selected:
-                self.selected_files.add(path)
+        try:
+            if node.data.get("is_dir", False):
+                # Toggle selection for all child files
+                is_selected = not self._any_child_selected(node)
+                self._select_node_children(node, is_selected)
             else:
-                self.selected_files.discard(path)
+                # Toggle selection for a single file
+                path = node.data.get("path", "")
+                if not path:
+                    self.log(f"No path found for node: {node}")
+                    return
+                    
+                is_selected = not node.data.get("selected", False)
+                node.data["selected"] = is_selected
+                
+                if is_selected:
+                    self.selected_files.add(path)
+                else:
+                    self.selected_files.discard(path)
+                
+                # Update node label to reflect selection state
+                node.label = self._get_label_with_selection(node)
             
-            # Update node label to reflect selection state
-            node.label = self._get_label_with_selection(node)
-        
-        # Notify about selection change
-        self.post_message(self.FileSelected(self.selected_files.copy()))
+            # Notify about selection change
+            self.post_message(self.FileSelected(self.selected_files.copy()))
+        except Exception as e:
+            self.log(f"Error toggling selection: {e}")
 
     def select_all_matching_files(self) -> None:
         """Select all files matching the extension filter."""
@@ -290,11 +310,19 @@ class DirectoryTree(Tree):
         Returns:
             True if any child is selected, False otherwise
         """
+        # Safety check for nodes without data
+        if not hasattr(node, 'data') or node.data is None:
+            return False
+            
         if not node.data.get("is_dir", False):
             return node.data.get("selected", False)
         
         if hasattr(node, "children"):
             for child in node.children:
+                # Skip children without data
+                if not hasattr(child, 'data') or child.data is None:
+                    continue
+                    
                 if child.data.get("is_dir", False):
                     if self._any_child_selected(child):
                         return True
@@ -310,12 +338,22 @@ class DirectoryTree(Tree):
             node: The parent node
             select: Whether to select (True) or deselect (False)
         """
-        if hasattr(node, "children"):
-            for child in node.children:
+        if not hasattr(node, "children"):
+            return
+            
+        for child in node.children:
+            # Skip children without data
+            if not hasattr(child, 'data') or child.data is None:
+                continue
+                
+            try:
                 if child.data.get("is_dir", False):
                     self._select_node_children(child, select)
                 else:
-                    path = child.data["path"]
+                    path = child.data.get("path", "")
+                    if not path:
+                        continue
+                        
                     child.data["selected"] = select
                     
                     if select:
@@ -325,13 +363,20 @@ class DirectoryTree(Tree):
                     
                     # Update node label
                     child.label = self._get_label_with_selection(child)
+            except Exception as e:
+                self.log(f"Error selecting child node: {e}")
 
     @on(Tree.NodeSelected)
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         """Handle node selection events - automatically toggle node when clicked."""
-        node = event.node
-        # Always toggle selection when a node is selected (clicked)
-        self.toggle_selection(node)
+        try:
+            node = event.node
+            # Only toggle if the node has data
+            if hasattr(node, 'data') and node.data is not None:
+                # Always toggle selection when a node is selected (clicked)
+                self.toggle_selection(node)
+        except Exception as e:
+            self.log(f"Error handling node selection: {e}")
         
     @on(Tree.NodeHighlighted)
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
