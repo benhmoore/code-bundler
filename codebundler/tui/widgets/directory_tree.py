@@ -396,25 +396,15 @@ class DirectoryTree(Tree):
             except Exception as e:
                 self.log(f"Error selecting child node: {e}")
 
-    # Override the default click behavior
+    # Handle clicks manually without using methods that cause AttributeError
     async def on_click(self, event) -> None:
-        """Handle click events on the tree - use click for selection not expansion."""
-        # Get the node that was clicked
-        hit_info = self.get_node_at(event.x, event.y)
-        if hit_info is None:
-            return
-            
-        node, _ = hit_info
-        if node is None:
-            return
-            
+        """Handle click events on the tree."""
+        # We'll use the meta information from the style or just use the highlighted node
         try:
-            # Only toggle if the node has data
-            if hasattr(node, 'data') and node.data is not None:
-                # Toggle selection when a node is clicked
-                self.toggle_selection(node)
-                # Also set focus to this node
-                self.select_node(node)
+            # Simply use the currently highlighted node for selection
+            # The actual node highlighting is handled by the tree internals
+            if self._highlighted_node is not None:
+                self.toggle_selection(self._highlighted_node)
         except Exception as e:
             self.log(f"Error handling click: {e}")
             
@@ -439,18 +429,23 @@ class DirectoryTree(Tree):
         node = self._highlighted_node
         if not node:
             return
-            
-        # Handle space key for toggle expansion
-        if event.key == " ":
-            event.prevent_default()
-            # Toggle expansion for directories
-            if node.data.get("is_dir", False):
-                if node.is_expanded:
-                    await node.collapse()
-                else:
-                    await node.expand()
         
-        # Handle enter key for selection
-        elif event.key == "enter":
-            event.prevent_default()
-            self.toggle_selection(node)
+        try:    
+            # Handle space key for toggle expansion
+            if event.key == " ":
+                event.prevent_default()
+                # Toggle expansion for directories
+                if hasattr(node, 'data') and node.data and node.data.get("is_dir", False):
+                    if hasattr(node, 'is_expanded') and node.is_expanded:
+                        if hasattr(node, 'collapse'):
+                            await node.collapse()
+                    else:
+                        if hasattr(node, 'expand'):
+                            await node.expand()
+            
+            # Handle enter key for selection
+            elif event.key == "enter":
+                event.prevent_default()
+                self.toggle_selection(node)
+        except Exception as e:
+            self.log(f"Error handling key: {e} for {event.key}")
