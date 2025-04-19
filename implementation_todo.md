@@ -2,11 +2,11 @@
 
 Here are the tasks involved in refactoring the `code-bundler` to use an interactive TUI:
 
--   [ ] **1. Introduce TUI Framework:**
-    -   [ ] Choose a TUI framework (e.g., `textual`).
-    -   [ ] Add the chosen framework as a project dependency.
-    -   [ ] Update `setup.py` or `pyproject.toml`.
-    -   [ ] Install the dependency in the development environment.
+-   [x] **1. Introduce TUI Framework:**
+    -   [x] Choose a TUI framework (e.g., `textual`).
+    -   [x] Add the chosen framework as a project dependency.
+    -   [x] Update `setup.py` or `pyproject.toml`.
+    -   [x] Install the dependency in the development environment.
 
 -   [ ] **2. Refactor CLI Argument Parsing (`codebundler/cli/commands.py`):**
     -   [ ] Replace positional `source_dir`, `output_file` with flags (`--watch-path`, `--output`).
